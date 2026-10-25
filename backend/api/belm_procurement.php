@@ -289,6 +289,7 @@ if ($method === 'GET') {
 
     $inventoryStmt = db()->query(
         "SELECT spr.id,spr.spare_part_id,spr.procurement_request_id,spr.machine_id,spr.quantity,spr.status,
+                CASE WHEN spr.requested_by_id IS NOT NULL AND spr.request_id IS NULL AND spr.procurement_request_id IS NULL THEN 'STOCK_ALERT' ELSE 'REPAIR_SUPPLY' END AS request_kind,
                 spr.requested_by_name,spr.description,spr.machine_type,spr.created_at,spr.reference_number,
                 spr.procurement_order_status,spr.procurement_supplier_id,spr.procurement_supplier_reference,
                 spr.procurement_note,spr.procurement_ordered_at,spr.procurement_expected_at,spr.procurement_ordered_by_name,

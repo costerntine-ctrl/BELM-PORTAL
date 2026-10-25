@@ -91,6 +91,7 @@ if ($method === 'GET' && $action === 'pending-spare-requests') {
          JOIN customers c ON c.id=m.customer_id AND c.deleted_at IS NULL AND c.is_active=1
          JOIN spare_parts sp ON sp.id=spr.spare_part_id AND sp.deleted_at IS NULL
          WHERE spr.status IN ('PENDING','PURCHASE_REQUIRED')
+           AND (spr.requested_by_id IS NULL OR spr.request_id IS NOT NULL OR spr.procurement_request_id IS NOT NULL)
            AND NOT EXISTS (
              SELECT 1 FROM proforma_spare_request_links l
              JOIN proforma_invoices p ON p.id=l.proforma_id AND p.deleted_at IS NULL
@@ -241,7 +242,8 @@ if ($method === 'POST') {
         $requestCheck = db()->prepare(
             'SELECT spr.machine_id FROM spare_part_requests spr
              JOIN machines m ON m.id = spr.machine_id
-             WHERE spr.id = ? AND m.customer_id = ?'
+             WHERE spr.id = ? AND m.customer_id = ?
+               AND (spr.requested_by_id IS NULL OR spr.request_id IS NOT NULL OR spr.procurement_request_id IS NOT NULL)'
         );
         $resolvedRequestMachine = $machineId;
         foreach ($sourceSpareRequestIds as $requestId) {

@@ -30,3 +30,7 @@ html[data-theme="light"] .landing-shell :is(.welcome-line,.contact-item,.hero-su
 html[data-theme="light"] .landing-shell h1 { color:#12385e; text-shadow:none; }
 
 @media print { #belmDashboardPreferences,.belm-global-theme-toggle { display:none!important; } }
+
+/* One compact display-settings launcher; keep request actions readable on phones. */
+body:has(#belmDashboardPreferences) .belm-global-theme-toggle{display:none!important}
+@media(max-width:700px){.belm-dashboard-preferences{bottom:16px}.belm-dashboard-preferences:not([open]) summary{font-size:0;padding:8px 11px;min-width:44px;min-height:44px;box-sizing:border-box}.belm-dashboard-preferences:not([open]) summary::after{content:'⚙';font-size:20px;line-height:26px}}

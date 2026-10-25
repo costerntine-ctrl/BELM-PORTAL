@@ -242,59 +242,22 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, 
 .request-proforma-toolbar button:disabled{opacity:.45;cursor:not-allowed}
 .proforma-request-select{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid rgba(56,189,248,.32);border-radius:10px;font-weight:700}
 
-/* V812 - Spare request information cards: portrait, compact and easier to scan. */
-.request-panel .request-grid{
-  grid-template-columns:repeat(auto-fill,minmax(270px,320px));
-  justify-content:start;
-  align-items:start;
-  gap:16px;
-}
-.request-panel .request-proforma-toolbar{
-  grid-column:1/-1;
-  width:100%;
-}
-.request-panel .request-card{
-  min-height:430px;
-  display:flex;
-  flex-direction:column;
-  padding:18px;
-}
-.request-panel .request-card-head{
-  align-items:flex-start;
-  gap:10px;
-}
-.request-panel .request-card h3{
-  line-height:1.35;
-}
-.request-panel .request-card dl{
-  grid-template-columns:1fr;
-  gap:12px;
-  margin:18px 0;
-}
-.request-panel .request-card dl div{
-  padding-bottom:9px;
-  border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent);
-}
-.request-panel .request-card dl div:last-child{
-  padding-bottom:0;
-  border-bottom:0;
-}
-.request-panel .request-actions{
-  width:100%;
-  margin-top:auto;
-  display:grid;
-  grid-template-columns:1fr;
-  gap:8px;
-  justify-content:stretch;
-}
-.request-panel .request-actions button,
-.request-panel .proforma-request-select{
-  width:100%;
-  min-height:38px;
-  justify-content:center;
-  text-align:center;
-}
-@media(max-width:700px){
-  .request-panel .request-grid{grid-template-columns:1fr;}
-  .request-panel .request-card{min-height:0;}
-}
+/* Compact request review: summary first, secondary context on demand. */
+.request-panel .request-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));align-items:start;gap:10px;padding:12px}
+.request-panel .request-card{min-height:0;padding:12px;border-radius:10px;display:block}
+.request-panel .request-card-head{gap:8px;align-items:start}
+.request-panel .request-card-head .badge{max-width:135px;font-size:10px;line-height:1.3;padding:5px 7px;white-space:normal}
+.request-panel .request-card h3{margin:4px 0;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.request-origin{font-size:10px;color:var(--muted);font-weight:750}
+.request-context{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11px;line-height:1.4;margin:7px 0;overflow-wrap:anywhere}
+.request-quantity{display:flex;flex-wrap:wrap;gap:8px 16px;padding:7px 0;font-size:11px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.request-shortage{color:var(--red,#c73333)}
+.request-details{font-size:11px;margin:8px 0}.request-details summary{cursor:pointer;font-weight:700;min-height:28px;align-content:center}
+.request-panel .request-card dl{grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.request-panel .request-card dl div{padding:0;border:0}.request-note{font-size:11px;line-height:1.4;color:var(--muted);margin:6px 0}
+.request-panel .request-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.request-panel .request-actions button,.request-panel .proforma-request-select{width:auto;min-height:36px;padding:7px 10px;font-size:11px;border-radius:8px;line-height:1.25}
+.request-panel .proforma-request-select{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer}
+.request-panel .proforma-request-select input{width:16px!important;height:16px;min-height:0;margin:0;flex:0 0 16px}
+.request-panel .panel-head{padding:12px 14px;align-items:start}.request-panel .panel-head h2{font-size:17px;margin:0}.request-panel .panel-head p{font-size:11px;line-height:1.4;max-width:650px;margin:5px 0 0}
+.request-panel .request-proforma-toolbar{padding:8px 10px;border-radius:8px;gap:8px;font-size:11px}.request-panel .request-proforma-toolbar button{min-height:34px;padding:6px 10px;font-size:11px}
+@media(max-width:420px){.request-panel .request-card-head{flex-direction:column}.request-panel .request-actions button{flex:1 1 auto}.request-panel .request-card dl{grid-template-columns:1fr 1fr}}

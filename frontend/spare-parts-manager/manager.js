@@ -59,73 +59,47 @@
     box.className = "alert error";
   }
 
+  function reorderThreshold(part){const value=Number(part.reorderThreshold??5);return Number.isFinite(value)?Math.max(0,value):5;}
+  function isLowStock(part){return Number(part.stockQty||0)<=reorderThreshold(part);}
   function updateMetrics() {
     document.getElementById("partCount").textContent = parts.length.toLocaleString();
     document.getElementById("unitCount").textContent = parts.reduce((sum, part) => sum + Number(part.stockQty || 0), 0).toLocaleString();
     document.getElementById("inventoryCost").textContent = money(parts.reduce((sum, part) =>
       sum + Number(part.stockQty || 0) * Number(part.purchasePrice || 0), 0));
-    document.getElementById("lowStockCount").textContent = parts.filter((part) =>
-      Number(part.stockQty || 0) <= 5).length.toLocaleString();
+    document.getElementById("lowStockCount").textContent = parts.filter(isLowStock).length.toLocaleString();
   }
 
+  function isStockAlert(request) { return request.requestKind === 'STOCK_ALERT'; }
+  function canQuoteRequest(request) { return !isStockAlert(request) && Boolean(request.customerId && request.sparePartId); }
   function renderRequests() {
-    const panel = document.getElementById("requestsPanel");
-    const count = document.getElementById("requestCount");
-    count.textContent = `${requests.length.toLocaleString()} open`;
-    if (!requests.length) {
-      panel.className = "empty";
-      panel.textContent = "No open spare-part requests.";
-      return;
-    }
-
-    panel.className = "request-grid";
-    const selectedRequests = requests.filter((request) => selectedProformaRequestIds.has(request.id));
-    const toolbar = `<div class="request-proforma-toolbar"><strong>${selectedRequests.length} selected for Proforma</strong><button type="button" data-generate-selected-proforma ${selectedRequests.length ? "" : "disabled"}>Generate Proforma from Selected</button></div>`;
-    panel.innerHTML = toolbar + requests.map((request) => {
-      const machineName = [request.machineBrand, request.machineModel].filter(Boolean).join(" ") || "Machine";
-      const reference = request.serialNumber || request.regNumber || "No serial recorded";
-      const purchaseRequired = request.status === "PURCHASE_REQUIRED";
-      const procurementOrdered = purchaseRequired && String(request.procurementOrderStatus || "").toUpperCase() === "ORDERED";
-      const selected = Boolean(request.sparePartId);
-      const stockQty = Number(request.stockQty || 0);
-      const customerRequest = Boolean(request.customerId) && !request.requestedById;
-      const title = selected
-        ? `${request.partNumber || ""} — ${request.partName || request.description || "Spare part"}`
-        : (request.referenceNumber ? `${request.referenceNumber} — ${request.description || ""}` : (request.description || "Spare request"));
-      const badgeText = procurementOrdered
-        ? "ORDERED · WAITING BELM STORE"
-        : purchaseRequired
-          ? "PURCHASE REQUIRED"
-        : selected
-          ? (stockQty > 0 ? "BELM SPARE SELECTED · IN STOCK" : "BELM SPARE SELECTED · STOCK 0")
-          : (customerRequest ? "CUSTOMER REQUEST · SELECT SPARE" : "TECHNICIAN REQUEST");
-      return `<article class="request-card${purchaseRequired ? " purchase" : ""}">
-        <div class="request-card-head">
-          <div>
-            <span class="badge ${purchaseRequired ? "off" : "warn"}">${escapeHtml(badgeText)}</span>
-            <h3>${escapeHtml(title)}</h3>
-          </div>
-          ${selected ? `<strong>Stock ${escapeHtml(stockQty)}</strong>` : ""}
-        </div>
-        <dl>
-          <div><dt>Machine</dt><dd>${escapeHtml(machineName)} · ${escapeHtml(reference)}</dd></div>
-          <div><dt>Machine type</dt><dd>${escapeHtml(request.machineType || "—")}</dd></div>
-          <div><dt>Customer</dt><dd>${escapeHtml(request.customerName || "—")}</dd></div>
-          <div><dt>Requested by</dt><dd>${escapeHtml(request.requestedByName || "Customer")}</dd></div>
-          <div><dt>Quantity</dt><dd>${escapeHtml(request.quantity ?? 1)}</dd></div>
-          ${selected && request.description ? `<div><dt>Customer asked</dt><dd>${escapeHtml(request.description)}</dd></div>` : ""}
-          ${procurementOrdered ? `<div><dt>Procurement</dt><dd>Ordered by ${escapeHtml(request.procurementOrderedByName || "BELM Procurement")} · Supplier ${escapeHtml(request.procurementSupplierName || "—")}${request.procurementSupplierReference ? ` · Ref ${escapeHtml(request.procurementSupplierReference)}` : ""}${request.procurementExpectedAt ? ` · Expected ${escapeHtml(request.procurementExpectedAt)}` : ""}</dd></div>` : ""}
-        </dl>
-        <div class="row-actions request-actions">
-          ${request.customerId && selected ? `<label class="proforma-request-select"><input type="checkbox" data-select-proforma-request="${escapeHtml(request.id)}" ${selectedProformaRequestIds.has(request.id) ? "checked" : ""}> Add to Proforma</label>` : ""}
-          ${!selected ? `<button data-choose-request="${escapeHtml(request.id)}">Choose BELM Spare</button>` : ""}
-          ${selected && stockQty <= 0 ? `<button data-add-request="${escapeHtml(request.id)}">Add / Receive Stock</button>` : ""}
-          <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${procurementOrdered ? "Ordered · Receive Stock" : purchaseRequired ? "Awaiting Procurement" : "Purchase Required"}</button>
-          ${request.customerId && selected ? `<button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">Generate Proforma</button>` : ""}
-          ${selected && stockQty >= Number(request.quantity || 1) ? `<button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>` : ""}
-        </div>
-      </article>`;
-    }).join("");
+    const panel=document.getElementById('requestsPanel'),count=document.getElementById('requestCount');
+    count.textContent=`${requests.length.toLocaleString()} open`;
+    if(!requests.length){panel.className='empty';panel.textContent='No open spare-part requests.';return;}
+    panel.className='request-grid';
+    const selectedRequests=requests.filter(request=>canQuoteRequest(request)&&selectedProformaRequestIds.has(request.id));
+    const hasCommercial=requests.some(canQuoteRequest);
+    const toolbar=hasCommercial?`<div class="request-proforma-toolbar"><strong>${selectedRequests.length} selected</strong><button type="button" data-generate-selected-proforma ${selectedRequests.length?'':'disabled'}>Create Proforma</button></div>`:'';
+    panel.innerHTML=toolbar+requests.map(request=>{
+      const alert=isStockAlert(request),selected=Boolean(request.sparePartId),stock=Number(request.stockQty||0),qty=Math.max(1,Number(request.quantity||1));
+      const purchase=request.status==='PURCHASE_REQUIRED',ordered=purchase&&String(request.procurementOrderStatus||'').toUpperCase()==='ORDERED';
+      const ready=selected&&stock>=qty,shortage=selected?Math.max(0,qty-stock):qty;
+      const machine=[request.machineBrand,request.machineModel].filter(Boolean).join(' ')||'Machine';
+      const reference=request.serialNumber||request.regNumber||'—';
+      const title=selected?[request.partNumber,request.partName||request.description||'Spare'].filter(Boolean).join(' · '):(request.description||'Spare request');
+      const stage=ready?'Stock available':ordered?'Ordered · awaiting receipt':purchase?'Awaiting procurement':selected?'Store review':'Select spare';
+      return `<article class="request-card${purchase?' purchase':''}" data-request-id="${escapeHtml(request.id)}" data-request-kind="${alert?'stock-alert':'repair-supply'}">
+        <header class="request-card-head"><div><span class="request-origin">${alert?'Stock replenishment · Technician':'Repair / customer supply'}</span><h3>${escapeHtml(title)}</h3></div><span class="badge ${ready?'':'warn'}">${escapeHtml(stage)}</span></header>
+        <div class="request-context"><strong>${escapeHtml(request.customerName||'BELM Store')}</strong><span>${escapeHtml(machine)} · ${escapeHtml(reference)}</span></div>
+        <div class="request-quantity"><span>Requested <b>${escapeHtml(qty)}</b></span><span>In stock <b>${escapeHtml(stock)}</b></span>${shortage?`<span class="request-shortage">Shortage <b>${escapeHtml(shortage)}</b></span>`:''}</div>
+        <details class="request-details"><summary>Details · ${escapeHtml(request.requestedByName||'Customer')}</summary><dl><div><dt>Machine type</dt><dd>${escapeHtml(request.machineType||'—')}</dd></div><div><dt>Requested by</dt><dd>${escapeHtml(request.requestedByName||'Customer')}</dd></div><div><dt>Request note</dt><dd>${escapeHtml(request.description||'—')}</dd></div>${ordered?`<div><dt>Procurement</dt><dd>${escapeHtml(request.procurementSupplierName||'Supplier pending')} · ${escapeHtml(request.procurementSupplierReference||'No reference')}${request.procurementExpectedAt?' · Expected '+escapeHtml(request.procurementExpectedAt):''}</dd></div>`:''}</dl>${alert?'<p class="request-note">Replenish inventory, then close the alert. This is not a customer quotation or confirmation of installation.</p>':''}</details>
+        <div class="request-actions">
+          ${!selected?`<button data-choose-request="${escapeHtml(request.id)}">Select spare</button>`:''}
+          ${selected&&!ready?`<button data-add-request="${escapeHtml(request.id)}">Receive stock</button>`:''}
+          ${!purchase&&!ready?`<button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}">Send to procurement</button>`:''}
+          ${ready?`<button data-resolve-request="${escapeHtml(request.id)}">${alert?'Close stock alert':'Mark supply ready'}</button>`:''}
+          ${canQuoteRequest(request)?`<label class="proforma-request-select"><input type="checkbox" data-select-proforma-request="${escapeHtml(request.id)}" ${selectedProformaRequestIds.has(request.id)?'checked':''}> Quote</label><button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">Proforma</button>`:''}
+        </div></article>`;
+    }).join('');
   }
 
   let selectedPartIds = new Set();
@@ -194,7 +168,7 @@
       <tbody>${filtered.map((part) => {
         const profit = Number(part.sellingPrice || 0) - Number(part.purchasePrice || 0);
         const stockQty = Number(part.stockQty || 0);
-        const stockClass = stockQty <= 0 ? "off" : stockQty <= 5 ? "warn" : "";
+        const stockClass = stockQty <= 0 ? "off" : isLowStock(part) ? "warn" : "";
         return `<tr>
           <td><input type="checkbox" data-select-part="${escapeHtml(part.id)}" ${selectedPartIds.has(part.id) ? "checked" : ""}></td>
           <td class="nowrap"><strong>${escapeHtml(part.partNumber)}</strong>${part.equivalentCount > 0 ? ` <span class="badge" title="Linked equivalent spare parts">≈${escapeHtml(part.equivalentCount)}</span>` : ""}</td>
@@ -390,8 +364,8 @@
       threadSize: document.getElementById("threadSize").value.trim(),
     };
     const button = document.getElementById("saveButton");
-    if (resolvingRequestId && payload.stockQty <= 0) {
-      formError("Enter received stock quantity above 0 to close this Technician alert.");
+    if (resolvingRequestId && payload.stockQty < Number(requests.find(request=>request.id===resolvingRequestId)?.quantity||1)) {
+      formError("Received stock must cover the requested quantity before this request can close.");
       return;
     }
     if (id) {
@@ -523,7 +497,7 @@
         body: JSON.stringify({ action: "resolve" }),
       });
       await loadParts();
-      showAlert("Marked as fulfilled — customer's part has been sourced.");
+      showAlert("Stock availability confirmed. The request is closed; repair installation remains a separate step.");
     } catch (error) {
       showAlert(error.message, true);
     }
@@ -554,13 +528,14 @@
 
   document.getElementById("selectLowStockButton").addEventListener("click", () => {
     parts.forEach((part) => {
-      if (Number(part.stockQty || 0) <= 5) selectedPartIds.add(part.id);
+      if (isLowStock(part)) selectedPartIds.add(part.id);
     });
     renderParts();
   });
 
   function csvEscape(value) {
-    const text = String(value ?? "");
+    let text = String(value ?? "");
+    if(/^[\s]*[=+\-@]/.test(text))text="'"+text;
     return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
 
@@ -570,23 +545,23 @@
     const headers = ["Part Number", "Reference No.", "Name", "Category", "Current Stock", "Reorder Threshold", "Suggested Order Qty", "Purchase Price", "Notes"];
     const rows = selected.map((part) => {
       const stockQty = Number(part.stockQty || 0);
-      const reorder = Number(part.reorderThreshold || 5);
-      const suggestedQty = Math.max(reorder * 2 - stockQty, reorder);
+      const reorder = reorderThreshold(part);
+      const suggestedQty = isLowStock(part)?Math.max(0,Math.ceil(reorder * 2 - stockQty)):0;
       return [
         part.partNumber, part.referenceNumber || "", part.name, part.category || "",
         stockQty, reorder, suggestedQty, part.purchasePrice || 0,
-        stockQty <= 0 ? "OUT OF STOCK" : "LOW STOCK",
+        stockQty <= 0 ? "OUT OF STOCK — REVIEW" : isLowStock(part)?"LOW STOCK — REVIEW":"NO ORDER SUGGESTED",
       ].map(csvEscape).join(",");
     });
     const csv = [headers.map(csvEscape).join(","), ...rows].join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `BELM-restock-order-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `BELM-restock-recommendations-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
-    showAlert(`Exported ${selected.length} part(s) to CSV — ready to send to your supplier.`);
+    showAlert(`Exported ${selected.length} restock recommendation(s). Target: twice the reorder threshold; review before placing an order.`);
   });
 
   // ------------------------------------------------------------------
@@ -690,6 +665,7 @@
   });
 
   function openProformaForRequests(selectedRequests) {
+    if (selectedRequests.some(request=>!canQuoteRequest(request))) { showAlert("Stock replenishment alerts cannot create a customer Proforma.", true); return; }
     if (!selectedRequests.length) { showAlert("Select at least one spare request.", true); return; }
     const customerId = selectedRequests[0].customerId || "";
     const machineId = selectedRequests[0].machineId || "";
@@ -734,7 +710,7 @@
       openProformaForRequests([request]);
     }
     const generateSelected = event.target.closest("[data-generate-selected-proforma]");
-    if (generateSelected) openProformaForRequests(requests.filter((request) => selectedProformaRequestIds.has(request.id)));
+    if (generateSelected) openProformaForRequests(requests.filter((request) => canQuoteRequest(request) && selectedProformaRequestIds.has(request.id)));
     if (resolve) markFulfilled(resolve.dataset.resolveRequest);
     if (add) {
       const request = requests.find((item) => item.id === add.dataset.addRequest);

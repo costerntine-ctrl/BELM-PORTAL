@@ -175,7 +175,7 @@ if ($method === 'POST') {
             'SELECT id, stock_qty, deleted_at
              FROM spare_parts
              WHERE UPPER(part_number) = UPPER(?)
-             LIMIT 1'
+             LIMIT 1 FOR UPDATE'
         );
         $partStmt->execute([$request['partNumber']]);
         $part = $partStmt->fetch();
@@ -301,6 +301,7 @@ if ($method === 'GET') {
         }
         $stmt = db()->prepare(
             "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.procurement_request_id, spr.machine_id, spr.quantity,
+                CASE WHEN spr.requested_by_id IS NOT NULL AND spr.request_id IS NULL AND spr.procurement_request_id IS NULL THEN 'STOCK_ALERT' ELSE 'REPAIR_SUPPLY' END AS request_kind,
                     spr.status, spr.requested_by_name, spr.description,
                     spr.machine_type, spr.created_at,
                     sp.part_number, sp.name AS part_name, sp.stock_qty,
@@ -323,6 +324,7 @@ if ($method === 'GET') {
     require_page_access($user, 'spare-parts');
     $stmt = db()->query(
         "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.procurement_request_id, spr.machine_id, spr.quantity,
+                CASE WHEN spr.requested_by_id IS NOT NULL AND spr.request_id IS NULL AND spr.procurement_request_id IS NULL THEN 'STOCK_ALERT' ELSE 'REPAIR_SUPPLY' END AS request_kind,
                 spr.status, spr.requested_by_id, spr.requested_by_name, spr.description,
                 spr.machine_type, spr.created_at,
                 spr.procurement_order_status, spr.procurement_supplier_id, spr.procurement_supplier_reference,
@@ -447,7 +449,7 @@ if ($method === 'PUT') {
     require_page_access($user, 'spare-parts');
     $stmt = db()->prepare(
         'SELECT spr.id, spr.status, spr.spare_part_id, spr.procurement_request_id, spr.machine_id, m.customer_id,
-                spr.description, spr.quantity, sp.stock_qty
+                spr.description, spr.quantity, spr.request_id, spr.requested_by_id, spr.procurement_order_status, sp.stock_qty
          FROM spare_part_requests spr
          LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
          LEFT JOIN machines m ON m.id = spr.machine_id
@@ -456,8 +458,12 @@ if ($method === 'PUT') {
     $stmt->execute([$id]);
     $request = $stmt->fetch();
     if (!$request) json_error('Spare request not found.', 404);
+    $stockAlert = !empty($request['requested_by_id']) && empty($request['request_id']) && empty($request['procurement_request_id']);
+    if (!in_array($request['status'], ['PENDING','PURCHASE_REQUIRED'], true)) json_error('This request is already closed. Refresh the list.',409);
+
 
     if ($action === 'select-spare') {
+        if (($request['procurement_order_status'] ?? '') === 'ORDERED') json_error('This spare is already ordered. Review the purchase before changing the selected part.',409);
         $sparePartId = trim((string)($body['sparePartId'] ?? ''));
         if ($sparePartId === '') json_error('Choose a BELM spare part.');
         $partStmt = db()->prepare(
@@ -529,6 +535,7 @@ if ($method === 'PUT') {
     }
 
     if ($action === 'purchase') {
+        if ($request['status'] === 'PURCHASE_REQUIRED') json_out(['ok'=>true,'status'=>'PURCHASE_REQUIRED']);
         db()->prepare(
             "UPDATE spare_part_requests
              SET status = 'PURCHASE_REQUIRED', resolved_at = NULL
@@ -543,7 +550,7 @@ if ($method === 'PUT') {
             'ATTENTION', 'spare_request', $id, !empty($request['machine_id']) ? (string)$request['machine_id'] : null,
             '/belm-procurement/?view=orders&module=procurement'
         );
-        if (!empty($request['customer_id'])) {
+        if (!$stockAlert && !empty($request['customer_id'])) {
             belm_log_customer_communication(
                 (string)$request['customer_id'], $request['machine_id'] ?: null,
                 'BELM_TO_CUSTOMER', 'PORTAL', 'Spare Purchase Required',
@@ -572,12 +579,12 @@ if ($method === 'PUT') {
             !empty($request['customer_id']) ? (string)$request['customer_id'] : null,
             'BELM', 'staff:' . (string)($user['id'] ?? ''), (string)($user['name'] ?? 'BELM Store'),
             ($user['roleName'] ?? '') === 'Store Keeper' ? 'store_keeper' : 'super_admin',
-            'BELM', 'workshop_manager', 'SPARE READY - WORK CAN CONTINUE',
-            'Spare Request ' . $id . ' is fulfilled/ready. Workshop can continue the related repair and testing process.',
+            'BELM', $stockAlert ? 'store_keeper' : 'workshop_manager', $stockAlert ? 'STOCK ALERT CLOSED' : 'SPARE READY - WORK CAN CONTINUE',
+            $stockAlert ? 'Inventory is now available for Stock Alert ' . $id . '. Stock readiness does not confirm issue or installation.' : 'Spare Request ' . $id . ' is fulfilled/ready. Workshop can continue the related repair and testing process.',
             'ATTENTION', 'spare_request', $id, !empty($request['machine_id']) ? (string)$request['machine_id'] : null,
-            '/concept-dashboards/11-workshop-manager/job-cards.html'
+            $stockAlert ? '/spare-parts-manager/' : '/concept-dashboards/11-workshop-manager/job-cards.html'
         );
-        if (!empty($request['customer_id'])) {
+        if (!$stockAlert && !empty($request['customer_id'])) {
             belm_log_customer_communication(
                 (string)$request['customer_id'], $request['machine_id'] ?: null,
                 'BELM_TO_CUSTOMER', 'PORTAL', 'Spare Request Fulfilled',

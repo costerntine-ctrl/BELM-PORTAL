@@ -300,7 +300,7 @@ if ($method === 'GET' && !$action) {
     $stmt = db()->query('SELECT * FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
     $parts = $stmt->fetchAll();
     if (($_GET['lowStock'] ?? '') === 'true') {
-        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= 5));
+        $parts = array_values(array_filter($parts, fn($p) => (float)$p['stock_qty'] <= (float)($p['reorder_threshold'] ?? 5)));
     }
     foreach ($parts as &$part) {
         $countStmt = db()->prepare('SELECT COUNT(*) FROM spare_part_equivalents WHERE spare_part_id = ?');

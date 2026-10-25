@@ -60,7 +60,7 @@
  source=source.flatMap(group=>group.title==='Technical Department Reports'?[section('Technician Reports','Checklist, diagnosis, Job Card and maintenance reports prepared by technicians.',group.cards.filter(card=>!['OPERATOR','FUEL'].includes(card.tag))),section('Operator Reports','Operator observations, operating and fuel records.',group.cards.filter(card=>['OPERATOR','FUEL'].includes(card.tag)))]:[group]);
  if(isCustomer&&role==='customer_admin'){
    const own=customerMaps.customer_admin.flatMap(group=>group.cards);
-   source=[section('Company Reports','Company machines and shared operational records.',own.filter(card=>card.tag==='MACHINES').map(card=>({...card,href:withReturn('/general-report/')}))),section('Technician Reports','Prepared by technicians; review the original machine reports.',[c('CHECKLIST','Technician Checklist Report','Inspection and safety findings.','/general-report/report/?type=checklist'),c('MAINTENANCE','Technician / Maintenance Report','Diagnosis, maintenance, testing and completion.','/general-report/report/?type=technician'),c('JOB CARDS','Job Card Report / Maintenance Report','Job Card and maintenance records.','/general-report/report/?type=job-card')]),section('Finance Reports','Company financial documents and audit records.',own.filter(card=>['FINANCE','AUDIT'].includes(card.tag))),...customerMaps.procurement,...customerMaps.store_keeper];
+   source=[section('Technician Reports','Prepared by technicians; review the original machine reports.',[c('CHECKLIST','Technician Checklist Report','Inspection and safety findings.','/general-report/report/?type=checklist'),c('JOB CARDS','Job Cards & Maintenance Report','Diagnosis, maintenance work, testing and completion records.','/general-report/report/?type=job-card')]),section('Finance Reports','Company financial documents and audit records.',own.filter(card=>['FINANCE','AUDIT'].includes(card.tag))),...customerMaps.procurement,...customerMaps.store_keeper];
  }
  let groups=source.map(group=>({...group,cards:group.cards.filter(card=>analysisCentre?isAnalysis(card):!isAnalysis(card))})).filter(group=>group.cards.length);
  if(analysisCentre){
@@ -79,7 +79,14 @@
  }
  // All departments read the original records through their existing authorised APIs.
  // No report copy or manual sync job is needed; a saved record is visible on the next load.
- groups.forEach(group=>{const seen=new Set();group.cards=group.cards.map(card=>card.href.includes('/spare-parts-manager/?view=audit')?{...card,href:withReturn('/store-audit-report/?module=inventory')}:card).filter(card=>{if(seen.has(card.href))return false;seen.add(card.href);return true;});});
+ const seenReports=new Set();
+ groups=groups.map(group=>({...group,cards:group.cards.map(card=>{
+   if(card.href.includes('/spare-parts-manager/?view=audit'))card={...card,href:withReturn('/store-audit-report/?module=inventory')};
+   const url=new URL(card.href,location.origin);
+   // These customer aliases all read the same machine Job Card dataset.
+   if(url.pathname==='/general-report/report/'&&['job-card','technician','service','breakdown'].includes(url.searchParams.get('type'))){url.searchParams.set('type','job-card');card={...card,title:'Job Cards & Maintenance Report',href:url.pathname+url.search+url.hash};}
+   return card;
+ }).filter(card=>{const url=new URL(card.href,location.origin);['returnTo','module'].forEach(key=>url.searchParams.delete(key));url.searchParams.sort();const key=url.pathname.replace(/\/+$/,'')+'?'+url.searchParams+url.hash;if(seenReports.has(key))return false;seenReports.add(key);return true;})})).filter(group=>group.cards.length);
  if(administrator&&onGeneral){
    const header=document.querySelector('header.top');
    if(header){header.querySelector('strong').textContent='BELM · GENERAL REPORT';header.querySelectorAll('a').forEach(a=>a.remove());const tabs=document.createElement('nav');tabs.className='general-centre-tabs';tabs.setAttribute('aria-label','General Report sections');tabs.innerHTML=['reports','analysis'].map(section=>'<a href="/reports-manager/?module=reports&section='+section+'"'+(section===(analysisCentre?'analysis':'reports')?' aria-current="page"':'')+'>'+ (section==='reports'?'Reports':'Analysis')+'</a>').join('');header.insertBefore(tabs,document.getElementById('refresh'));}

@@ -64,7 +64,10 @@
     document.title=document.title.replace(/Customer|COMPANY/g,name);
     const modeChip=document.querySelector('[data-customer-mode-chip]');
     if(modeChip){
-      if(modeResult.status==='fulfilled'){
+      if(document.body.dataset.customerRoleDashboard==='accounts'){
+        modeChip.textContent='CUSTOMER COMPANY FINANCE';
+        modeChip.classList.add('customer-mode-chip-v753','independent');
+      }else if(modeResult.status==='fulfilled'){
         const independent=!!mode.mode?.customerIndependent;
         modeChip.textContent=independent?'CUSTOMER INDEPENDENT WORKSHOP':'BELM SERVICE PROVIDER';
         modeChip.classList.add('customer-mode-chip-v753',independent?'independent':'provider');

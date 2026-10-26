@@ -26,3 +26,7 @@ html[data-theme=light] #belmPersistentNav .belm-persistent-logout{color:#9c253d}
  #belmPersistentScrim:not([hidden]){display:block;position:fixed;inset:0;width:100%;height:100dvh;border:0;background:#0008;z-index:2147482999}
 }
 @media print{body.belm-persistent-ready{padding:0!important}#belmPersistentNav,#belmPersistentMenu,#belmPersistentScrim{display:none!important}}
+
+#belmPersistentNav .belm-persistent-group{display:block;margin:12px 10px 3px;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#a5bfd9;font-weight:700}
+#belmPersistentNav .belm-persistent-menu-note{padding:10px;font-size:12px;line-height:1.5;color:inherit;opacity:.8}
+html[data-theme=light] #belmPersistentNav .belm-persistent-group{color:#4c6581}

@@ -32,7 +32,7 @@
   function loadRoleReportNav(){
     if(window.__belmRoleReportNav819||document.querySelector('script[src^="/role-report-nav-v819.js"]'))return;
     const script=document.createElement('script');
-    script.src='/role-report-nav-v819.js?v=59-separated-centres';
+    script.src='/role-report-nav-v819.js?v=85-role-owned-menus';
     script.defer=true;
     document.head.appendChild(script);
   }
@@ -68,6 +68,6 @@
     host.insertBefore(button,host.firstChild);bind(button);
   }
   function scan(){document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(bind);inject()}
-  async function boot(){if(!hasSession())return;if(!document.querySelector('script[src^="/persistent-role-sidebar.js"]')){const rail=document.createElement('script');rail.src='/persistent-role-sidebar.js?v=77';document.head.appendChild(rail);}loadReportExport();loadMobileSidebar();loadRoleReportNav();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
+  async function boot(){if(!hasSession())return;if(!document.querySelector('script[src^="/persistent-role-sidebar.js"]')){const rail=document.createElement('script');rail.src='/persistent-role-sidebar.js?v=85-role-owned-menus';document.head.appendChild(rail);}loadReportExport();loadMobileSidebar();loadRoleReportNav();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

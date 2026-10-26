@@ -12,9 +12,10 @@
   function decode(v){try{let r=(v.split('.')[1]||'').replace(/-/g,'+').replace(/_/g,'/');r+='='.repeat((4-r.length%4)%4);return JSON.parse(decodeURIComponent(Array.from(atob(r)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('')))}catch(_){return{}}}
   const s=decode(token());if(!Object.keys(s).length)return;
   const customerAliases={owner:'customer_admin',admin:'customer_admin',customer_admin:'customer_admin',workshop_manager:'workshop_manager',technician:'technician',operator:'operator',procurement:'procurement',store_keeper:'store_keeper',accounts:'accounts',finance:'accounts',accountant:'accounts'};
-  const staffAliases={'Super Admin':'super_admin','Workshop Manager':'workshop_manager','Engineer':'workshop_manager','Technician':'technician','Procurement':'procurement','Store Keeper':'store_keeper','Registration & Sales':'registration_sales','Finance / Accounts':'finance_accounts','Bank Controller':'bank_controller','System Coordinator':'system_coordinator'};
-  const isCustomer=s.type==='customer'||s.type==='operator';
-  const role=isCustomer?(s.type==='operator'?'operator':customerAliases[String(s.customerRole||(s.actorType==='owner'?'owner':'')).toLowerCase()]||'customer_admin'):(staffAliases[String(s.roleName||'')]||'super_admin');
+  const staffAliases={'Super Admin':'super_admin','Workshop Manager':'workshop_manager','Engineer':'workshop_manager','Technician':'technician','Procurement':'procurement','Store Keeper':'store_keeper','Registration & Sales':'registration_sales','Finance / Accounts':'finance_accounts','Bank Controller':'bank_controller','System Coordinator':'system_coordinator','Operator':'operator','Machine Operator':'operator'};
+  const managedTech=s.type==='staff'&&!!s.isCustomerManaged&&!!s.assignedCustomerId;
+  const isCustomer=s.type==='customer'||s.type==='operator'||managedTech;
+  const role=isCustomer?(s.type==='operator'?'operator':managedTech?'technician':customerAliases[String(s.customerRole||(s.actorType==='owner'?'owner':'')).toLowerCase()]||'unknown'):(Object.entries(staffAliases).find(([name])=>name.toLowerCase()===String(s.roleName||'').trim().toLowerCase())?.[1]||'unknown');
   const isAdmin=role==='super_admin'||role==='customer_admin';
   const path=(location.pathname.replace(/\/+$/,'')||'/');
   if(path==='/role-reports'||path==='/role-analysis')return;

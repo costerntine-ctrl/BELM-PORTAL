@@ -52,14 +52,14 @@
   function roleKey(){
     if(session.type==='customer')return customerAliases[String(session.customerRole||(session.actorType==='owner'?'owner':'')).toLowerCase()]||'customer_admin';
     if(session.type==='operator')return 'operator';
-    return staffAliases[String(session.roleName||'')]||'super_admin';
+    return Object.entries(staffAliases).find(([name])=>name.toLowerCase()===String(session.roleName||'').trim().toLowerCase())?.[1]||'unknown';
   }
   function roleHome(){
     const r=roleKey();
-    if(session.type==='customer'||session.type==='operator'){
+    if(session.type==='customer'||session.type==='operator'||(session.isCustomerManaged&&session.assignedCustomerId)){
       return ({customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop-manager/',technician:'/customer-technician-dashboard/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/'})[r]||'/portal-cwm/';
     }
-    return ({operator:'/concept-dashboards/07-operator/',super_admin:'/concept-dashboards/01-admin-home/',workshop_manager:'/concept-dashboards/11-workshop-manager/',technician:'/concept-dashboards/02-technician/',procurement:'/concept-dashboards/03-procurement/',store_keeper:'/concept-dashboards/06-storekeeper/',registration_sales:'/concept-dashboards/04-customer-registration/',finance_accounts:'/concept-dashboards/09-finance-accounts/',bank_controller:'/bank-controller/',system_coordinator:'/settings-manager/'})[r]||'/concept-dashboards/01-admin-home/';
+    return ({operator:'/concept-dashboards/07-operator/',super_admin:'/concept-dashboards/01-admin-home/',workshop_manager:'/concept-dashboards/11-workshop-manager/',technician:'/concept-dashboards/02-technician/',procurement:'/concept-dashboards/03-procurement/',store_keeper:'/concept-dashboards/06-storekeeper/',registration_sales:'/concept-dashboards/04-customer-registration/',finance_accounts:'/concept-dashboards/09-finance-accounts/',bank_controller:'/bank-controller/',system_coordinator:'/settings-manager/'})[r]||'/portal-v2/';
   }
 
   const moduleParents={settings:'/settings-manager/',registration:'/concept-dashboards/04-customer-registration/',finance:'/concept-dashboards/09-finance-accounts/',workshop:'/concept-dashboards/11-workshop-manager/',inventory:'/concept-dashboards/06-storekeeper/',procurement:'/concept-dashboards/03-procurement/',bank:'/bank-controller/',reports:'/role-reports/','customer-overview':'/customers-manager/','roles-users':'/roles-manager/'};

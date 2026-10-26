@@ -49,6 +49,7 @@ if ($method === 'GET' && $sub === 'coordinator-features') {
 }
 
 if ($sub === 'sales-documents') {
+    require_customer_finance_access($customer);
     $features = $customer['coordinatorFeatures'] ?? [];
     // V762 parity: customer Invoice + Proforma are Finance core functions.
     $features['invoiceSystem'] = true;
@@ -93,7 +94,7 @@ if ($sub === 'finance-summary' && $method === 'GET') {
         "SELECT d.id,d.document_type,d.document_no,d.client_name,d.description,d.amount,d.vat_rate,d.status,d.due_date,d.created_at,
                 COALESCE((SELECT SUM(p.amount) FROM customer_sales_payments p WHERE p.document_id=d.id AND p.customer_id=d.customer_id),0) AS paid_amount
          FROM customer_sales_documents d
-         WHERE d.customer_id=? ORDER BY d.created_at DESC LIMIT 250"
+         WHERE d.customer_id=? ORDER BY d.created_at DESC,d.id DESC"
     );
     $docStmt->execute([$customer['id']]);
     $documents = $docStmt->fetchAll();
@@ -112,6 +113,20 @@ if ($sub === 'finance-summary' && $method === 'GET') {
         }
     }
     unset($doc);
+    // Totals are calculated by PostgreSQL over every company invoice. They
+    // remain correct independently of any register pagination or row limit.
+    $totalsStmt = db()->prepare("SELECT
+        COALESCE(SUM(ROUND(d.amount + ROUND(d.amount*d.vat_rate/100,2),2)),0) AS gross,
+        COALESCE(SUM(ROUND(d.amount*d.vat_rate/100,2)),0) AS vat,
+        COALESCE(SUM(COALESCE(p.paid,0)),0) AS paid,
+        COALESCE(SUM(GREATEST(0,ROUND(d.amount + ROUND(d.amount*d.vat_rate/100,2),2)-COALESCE(p.paid,0))),0) AS outstanding
+        FROM customer_sales_documents d
+        LEFT JOIN (SELECT document_id,customer_id,SUM(amount) AS paid FROM customer_sales_payments GROUP BY document_id,customer_id) p ON p.document_id=d.id AND p.customer_id=d.customer_id
+        WHERE d.customer_id=? AND UPPER(d.document_type)='INVOICE'");
+    $totalsStmt->execute([$customer['id']]);
+    $totals = $totalsStmt->fetch();
+    $invoiceGross = (float)$totals['gross']; $vatTotal = (float)$totals['vat'];
+    $paidTotal = (float)$totals['paid']; $outstanding = (float)$totals['outstanding'];
     $expenseStmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM customer_finance_expenses WHERE customer_id=? AND deleted_at IS NULL');
     $expenseStmt->execute([$customer['id']]);
     $companyExpenses = (float)$expenseStmt->fetchColumn();
@@ -144,7 +159,7 @@ if ($sub === 'sales-payments') {
                     d.document_no,d.client_name,d.document_type
              FROM customer_sales_payments p
              JOIN customer_sales_documents d ON d.id=p.document_id AND d.customer_id=p.customer_id
-             WHERE p.customer_id=? ORDER BY p.paid_at DESC,p.created_at DESC LIMIT 300"
+             WHERE p.customer_id=? ORDER BY p.paid_at DESC,p.created_at DESC,p.id DESC"
         );
         $stmt->execute([$customer['id']]);
         json_out(['items'=>$stmt->fetchAll()]);
@@ -161,24 +176,44 @@ if ($sub === 'sales-payments') {
         if ($documentId === '' || $amount <= 0) json_error('Choose an invoice and enter a payment amount above zero.');
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $paidAt)) json_error('Payment date is invalid.');
         if (strlen($reference) > 120 || strlen($note) > 500 || strlen($methodName) > 40) json_error('Payment details are too long.');
-        $stmt = db()->prepare("SELECT id,document_type,document_no,amount,vat_rate FROM customer_sales_documents WHERE id=? AND customer_id=? LIMIT 1");
-        $stmt->execute([$documentId,$customer['id']]);
-        $doc = $stmt->fetch();
-        if (!$doc || strtoupper((string)$doc['document_type']) !== 'INVOICE') json_error('Select a valid customer-owned invoice.',404);
-        $gross = round((float)$doc['amount'] * (1 + ((float)$doc['vat_rate']/100)),2);
-        $paidStmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM customer_sales_payments WHERE document_id=? AND customer_id=?');
-        $paidStmt->execute([$documentId,$customer['id']]);
-        $already = round((float)$paidStmt->fetchColumn(),2);
-        $balance = max(0, round($gross-$already,2));
-        if ($amount > $balance + 0.01) json_error('Payment exceeds the current invoice balance of TZS ' . number_format($balance,2,'.',',') . '.');
+        $requestKey = trim((string)($b['requestKey'] ?? ''));
+        if ($requestKey !== '' && !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $requestKey)) json_error('Invalid payment request key.');
+        $requestHash = hash('sha256', json_encode([$documentId,$amount,$methodName,$reference,$paidAt,$note]));
         $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Finance')) ?: 'Finance';
         $id = uuid();
         $pdo = db(); $pdo->beginTransaction();
         try {
-            $pdo->prepare('INSERT INTO customer_sales_payments (id,customer_id,document_id,amount,payment_method,reference,paid_at,received_by_name,note,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())')
-                ->execute([$id,$customer['id'],$documentId,$amount,$methodName,$reference!==''?$reference:null,$paidAt,$actor,$note!==''?$note:null]);
-            $newPaid = $already + $amount;
-            $newStatus = $newPaid + 0.01 >= $gross ? 'PAID' : 'PART_PAID';
+            // Serialize both retries and balance checks. The invoice lock is held
+            // until the payment and invoice status have committed together.
+            if ($requestKey !== '') {
+                $pdo->prepare("SELECT pg_advisory_xact_lock(hashtext(?))")->execute(['customer-payment:'.$customer['id'].':'.$requestKey]);
+                $retry = $pdo->prepare('SELECT id,request_hash FROM customer_sales_payments WHERE customer_id=? AND request_key=?');
+                $retry->execute([$customer['id'],$requestKey]);
+                $previous = $retry->fetch();
+                if ($previous) {
+                    $pdo->rollBack();
+                    if (!hash_equals((string)$previous['request_hash'],$requestHash)) json_error('This payment request key was already used for different details.',409);
+                    json_out(['ok'=>true,'id'=>$previous['id'],'replayed'=>true]);
+                }
+            }
+            $stmt = $pdo->prepare("SELECT id,document_type,document_no,amount,vat_rate FROM customer_sales_documents WHERE id=? AND customer_id=? FOR UPDATE");
+            $stmt->execute([$documentId,$customer['id']]);
+            $doc = $stmt->fetch();
+            if (!$doc || strtoupper((string)$doc['document_type']) !== 'INVOICE') {
+                $pdo->rollBack(); json_error('Select a valid customer-owned invoice.',404);
+            }
+            $gross = round((float)$doc['amount'] * (1 + ((float)$doc['vat_rate']/100)),2);
+            $paidStmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) FROM customer_sales_payments WHERE document_id=? AND customer_id=?');
+            $paidStmt->execute([$documentId,$customer['id']]);
+            $already = round((float)$paidStmt->fetchColumn(),2);
+            $balance = max(0, round($gross-$already,2));
+            if ($amount > $balance) {
+                $pdo->rollBack(); json_error('Payment exceeds the current invoice balance of TZS ' . number_format($balance,2,'.',',') . '.');
+            }
+            $pdo->prepare('INSERT INTO customer_sales_payments (id,customer_id,document_id,amount,payment_method,reference,paid_at,received_by_name,note,request_key,request_hash,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW())')
+                ->execute([$id,$customer['id'],$documentId,$amount,$methodName,$reference!==''?$reference:null,$paidAt,$actor,$note!==''?$note:null,$requestKey!==''?$requestKey:null,$requestKey!==''?$requestHash:null]);
+            $newPaid = round($already + $amount,2);
+            $newStatus = $newPaid >= $gross ? 'PAID' : 'PART_PAID';
             $pdo->prepare('UPDATE customer_sales_documents SET status=?,updated_at=NOW() WHERE id=? AND customer_id=?')->execute([$newStatus,$documentId,$customer['id']]);
             $pdo->commit();
         } catch (Throwable $error) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $error; }
@@ -202,7 +237,7 @@ if ($sub === 'finance-expenses') {
         echo $binary; exit;
     }
     if (!$sub2 && $method === 'GET') {
-        $stmt = db()->prepare("SELECT id,expense_date,category,description,amount,supplier_name,reference,recorded_by_name,created_at,updated_at,CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data<>'' THEN 1 ELSE 0 END AS has_receipt FROM customer_finance_expenses WHERE customer_id=? AND deleted_at IS NULL ORDER BY expense_date DESC,created_at DESC LIMIT 300");
+        $stmt = db()->prepare("SELECT id,expense_date,category,description,amount,supplier_name,reference,recorded_by_name,created_at,updated_at,CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data<>'' THEN 1 ELSE 0 END AS has_receipt FROM customer_finance_expenses WHERE customer_id=? AND deleted_at IS NULL ORDER BY expense_date DESC,created_at DESC,id DESC");
         $stmt->execute([$customer['id']]);
         json_out(['items'=>$stmt->fetchAll()]);
     }
@@ -338,16 +373,21 @@ function require_customer_machine_management_access(array $customer): void {
 function customer_machine_details_from_body(array $body): array {
     $machineType = trim((string)($body['machineType'] ?? ''));
     $model = trim((string)($body['model'] ?? ''));
-    $serialNumber = trim((string)($body['serialNumber'] ?? ''));
-    $regNumber = trim((string)($body['regNumber'] ?? ''));
-    $fleetNumber = trim((string)($body['fleetNumber'] ?? ''));
+    $serialNumber = strtoupper(trim((string)($body['serialNumber'] ?? '')));
+    $regNumber = strtoupper(trim((string)($body['regNumber'] ?? '')));
+    $fleetNumber = strtoupper(trim((string)($body['fleetNumber'] ?? '')));
     $brand = trim((string)($body['brand'] ?? ''));
     $serviceKit = trim((string)($body['serviceKit'] ?? 'OK')) ?: 'OK';
     if ($machineType === '') json_error('Machine type is required.');
     if ($model === '') json_error('Machine model is required.');
     if ($serialNumber === '' && $regNumber === '') json_error('Enter a serial number or machine registration number.');
     if (!in_array($serviceKit, ['OK', 'NEW'], true)) $serviceKit = 'OK';
+    foreach (['capacity'=>100,'location'=>255] as $field=>$max) {
+        if (strlen(trim((string)($body[$field] ?? ''))) > $max) json_error(ucfirst($field).' is too long.');
+    }
     return [
+        'capacity' => array_key_exists('capacity',$body) ? trim((string)$body['capacity']) : null,
+        'location' => array_key_exists('location',$body) ? trim((string)$body['location']) : null,
         'machineType' => $machineType,
         'model' => $model,
         'serialNumber' => $serialNumber !== '' ? $serialNumber : null,
@@ -4475,11 +4515,11 @@ if ($sub === 'machines' && !$sub2 && $method === 'POST') {
     customer_assert_machine_serial_available($machine['serialNumber']);
     $newId = uuid();
     db()->prepare(
-        'INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, fleet_number, brand, service_kit, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())'
+        'INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, fleet_number, brand, service_kit, status, capacity, location, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
     )->execute([
         $newId, $customer['id'], $machine['machineType'], $machine['model'],
         $machine['serialNumber'], $machine['regNumber'], $machine['fleetNumber'],
-        $machine['brand'], $machine['serviceKit'], 'NOT_CHECKED',
+        $machine['brand'], $machine['serviceKit'], 'NOT_CHECKED', $machine['capacity'], $machine['location'],
     ]);
     $seededServiceParts = belm_seed_machine_service_parts_from_templates($newId, $machine['machineType']);
     log_customer_activity($customer, 'Added machine "' . $machine['model'] . '".');
@@ -4495,10 +4535,10 @@ if ($sub === 'machines' && $sub2 && !$sub3 && $method === 'PUT') {
     $machine = customer_machine_details_from_body(body());
     customer_assert_machine_serial_available($machine['serialNumber'], $sub2);
     db()->prepare(
-        'UPDATE machines SET machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=?, updated_at=NOW() WHERE id=? AND customer_id=?'
+        'UPDATE machines SET machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=?, capacity=COALESCE(?,capacity), location=COALESCE(?,location), updated_at=NOW() WHERE id=? AND customer_id=?'
     )->execute([
         $machine['machineType'], $machine['model'], $machine['serialNumber'], $machine['regNumber'],
-        $machine['fleetNumber'], $machine['brand'], $machine['serviceKit'], $sub2, $customer['id'],
+        $machine['fleetNumber'], $machine['brand'], $machine['serviceKit'], $machine['capacity'], $machine['location'], $sub2, $customer['id'],
     ]);
     log_customer_activity($customer, 'Edited machine "' . $existing['model'] . '" to "' . $machine['model'] . '".');
     json_out(['ok' => true, 'sync' => ['customer' => true, 'belm' => true]]);

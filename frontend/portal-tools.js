@@ -1921,6 +1921,8 @@
       serialNumber: machine?.serialNumber || machine?.serial_number || "",
       regNumber: machine?.regNumber || machine?.reg_number || "",
       fleetNumber: machine?.fleetNumber || machine?.fleet_number || "",
+      capacity: machine?.capacity || "",
+      location: machine?.location || "",
       brand: machine?.brand || "",
       serviceKit: machine?.serviceKit || machine?.service_kit || "OK",
     };
@@ -1933,6 +1935,8 @@
         <label><span>Registration Number</span><input name="regNumber" value="${escapeHtml(values.regNumber)}"></label>
         <label><span>Fleet Number</span><input name="fleetNumber" value="${escapeHtml(values.fleetNumber)}"></label>
         <label><span>Brand</span><input name="brand" value="${escapeHtml(values.brand)}"></label>
+        <label><span>Capacity (include unit)</span><input name="capacity" maxlength="100" placeholder="e.g. 45 tons" value="${escapeHtml(values.capacity)}"></label>
+        <label><span>Location</span><input name="location" maxlength="255" value="${escapeHtml(values.location)}"></label>
         <label><span>Service Kit</span><select name="serviceKit"><option value="OK" ${values.serviceKit === "OK" ? "selected" : ""}>OK</option><option value="NEW" ${values.serviceKit === "NEW" ? "selected" : ""}>NEW</option></select></label>
         <div class="belm-customer-machine-editor-error" data-customer-machine-editor-error hidden></div>
         <div class="belm-customer-machine-editor-actions"><button type="button" data-close-customer-machine-editor>Cancel</button><button type="submit" class="primary">${editing ? "Save Machine" : "Add Machine"}</button></div>
@@ -4564,6 +4568,8 @@
       card.dataset.belmMachineExpenseReady = "1";
       card.classList.add("belm-customer-machine-card", "belm-customer-machine-card-v409", "belm-customer-machine-card-v417", "belm-customer-machine-card-v422");
       card.dataset.belmMachineId = String(machine.id || "");
+      card.dataset.machineCapacity = String(machine.capacity || "");
+      card.dataset.machineLocation = String(machine.location || "");
       card.dataset.belmMachineTitle = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || machine.machineType || machine.machine_type || "Machine";
       card.dataset.belmMachineMeta = `${machine.machineType || machine.machine_type || "Machine"} · Reg: ${machine.regNumber || machine.reg_number || "—"} · Serial: ${machine.serialNumber || machine.serial_number || "—"}`;
       card.dataset.belmMachineFleet = String(machine.fleetNumber || machine.fleet_number || "—");
@@ -5600,6 +5606,8 @@
 
       card.dataset.belmTechnicianReportsReady = "1";
       card.dataset.belmMachineId = String(machine.id || "");
+      card.dataset.machineCapacity = String(machine.capacity || "");
+      card.dataset.machineLocation = String(machine.location || "");
       card.dataset.belmMachineTitle = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || machine.machineType || machine.machine_type || "Machine";
       card.dataset.belmMachineMeta = `${machine.machineType || machine.machine_type || "Machine"} · Reg: ${machine.regNumber || machine.reg_number || "—"} · Serial: ${machine.serialNumber || machine.serial_number || "—"}`;
       card.dataset.belmMachineFleet = String(machine.fleetNumber || machine.fleet_number || "—");

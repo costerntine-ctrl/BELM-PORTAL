@@ -39,17 +39,8 @@ jobs:
             node --check "$file"
           done < <(find frontend -type f -name '*.js' -print0)
 
-      - name: Validate account credential routes
-        run: node tests/account-credentials-route.test.js
-
-      - name: Validate login detail editing
-        run: node tests/login-detail-edit.test.js
-
-      - name: Validate dynamically loaded modules
-        run: node tests/dynamic-script-readiness.test.js
-
-      - name: Validate reports API routing
-        run: node tests/reports-route.test.js
+      - name: Run all portal regression tests
+        run: node --test tests/*.test.js
 
       - name: Validate local HTML static assets
         shell: bash

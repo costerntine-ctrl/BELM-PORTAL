@@ -37,7 +37,7 @@
 
   async function bootNonCritical(){
     if(!technician){
-      await loadScript('/portal-tools.js?v=658-lazy');
+      await loadScript('/portal-tools.js?v=87-machine-facts');
     }
     await loadScript('/v520-upgrades.js?v=658-lazy');
 

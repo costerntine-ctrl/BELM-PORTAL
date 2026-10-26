@@ -1829,3 +1829,11 @@ CREATE INDEX IF NOT EXISTS idx_customer_repair_review ON customer_repair_confirm
 
 CREATE INDEX IF NOT EXISTS idx_customer_repair_confirmations_machine ON customer_repair_confirmations(customer_id,machine_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_customer_repair_confirmations_issue ON customer_repair_confirmations(customer_id,store_issue_id);
+
+-- Production audit: optional real machine facts and retry-safe customer payments.
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS capacity VARCHAR(100) NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS location VARCHAR(255) NULL;
+ALTER TABLE customer_sales_payments ADD COLUMN IF NOT EXISTS request_key VARCHAR(64) NULL;
+ALTER TABLE customer_sales_payments ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_payment_request_key
+  ON customer_sales_payments(customer_id, request_key) WHERE request_key IS NOT NULL;

@@ -544,6 +544,19 @@ function require_auth(): array {
     if (!$payload || ($payload['type'] ?? '') !== 'staff') json_error('Not authenticated', 401);
     belm_require_login_role((string)($payload['roleName'] ?? ''));
 
+    // Re-read the live account so revocation, role changes and extra-role grants
+    // take effect for existing JWTs too, not only after the next login.
+    $staffStmt = db()->prepare('SELECT u.id,u.name,u.assigned_customer_id,u.is_customer_managed,r.name AS role_name,r.allowed_pages FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND u.deleted_at IS NULL AND u.is_active=1 AND r.deleted_at IS NULL');
+    $staffStmt->execute([(string)($payload['id'] ?? '')]);
+    $staff = $staffStmt->fetch();
+    if (!$staff) json_error('This staff account is no longer active.',401);
+    belm_require_login_role((string)$staff['role_name']);
+    $payload['roleName'] = $staff['role_name'];
+    $payload['name'] = $staff['name'];
+    $payload['assignedCustomerId'] = $staff['assigned_customer_id'];
+    $payload['isCustomerManaged'] = !empty($staff['is_customer_managed']);
+    $payload['allowedPages'] = merged_allowed_pages_for_user((string)$staff['id'],(string)$staff['role_name'],(string)$staff['allowed_pages']);
+
     // A Technician's assignedCustomerId is baked into their JWT at login
     // time and never re-checked afterward. If that customer is later
     // deleted, merged, or reassigned (e.g. via Danger Zone "Forget
@@ -704,10 +717,23 @@ function normalize_allowed_pages($decoded): array {
     return array_keys($decoded);
 }
 
+// Built-in roles cannot inherit historic admin-wide page grants. Explicit
+// additional roles still contribute their own (independently bounded) grants.
+function belm_bound_role_pages(string $roleName, array $pages): array {
+    $role = strtolower(trim($roleName));
+    $ceilings = [
+        'workshop manager' => ['customers','overview','service-requests','job-cards','spare-parts','reports','checklist-templates','suppliers'],
+        'engineer' => ['customers','overview','service-requests','job-cards','spare-parts','reports','checklist-templates','suppliers'],
+        'bank controller' => ['bank-manager','reports'],
+        'system coordinator' => [], 'system settings' => [],
+    ];
+    return isset($ceilings[$role]) ? array_values(array_intersect($pages,$ceilings[$role])) : $pages;
+}
+
 function merged_allowed_pages_for_user(string $userId, string $primaryRoleName, ?string $primaryAllowedPagesJson): ?array {
     if ($primaryRoleName === 'Super Admin') return null;
 
-    $pages = normalize_allowed_pages(json_decode($primaryAllowedPagesJson ?? '[]', true) ?: []);
+    $pages = belm_bound_role_pages($primaryRoleName, normalize_allowed_pages(json_decode($primaryAllowedPagesJson ?? '[]', true) ?: []));
 
     $stmt = db()->prepare(
         'SELECT r.name, r.allowed_pages FROM user_roles ur
@@ -717,7 +743,7 @@ function merged_allowed_pages_for_user(string $userId, string $primaryRoleName, 
     $stmt->execute([$userId]);
     foreach ($stmt->fetchAll() as $extra) {
         if ($extra['name'] === 'Super Admin') return null;
-        $pages = array_merge($pages, normalize_allowed_pages(json_decode($extra['allowed_pages'] ?? '[]', true) ?: []));
+        $pages = array_merge($pages, belm_bound_role_pages((string)$extra['name'], normalize_allowed_pages(json_decode($extra['allowed_pages'] ?? '[]', true) ?: [])));
     }
 
     return array_values(array_unique($pages));

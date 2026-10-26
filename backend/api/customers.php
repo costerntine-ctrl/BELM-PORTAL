@@ -173,16 +173,21 @@ function validate_customer_details(array $body, ?string $excludeCustomerId = nul
 function normalized_machine_details(array $body): array {
     $machineType = trim((string)($body['machineType'] ?? ''));
     $model = trim((string)($body['model'] ?? ''));
-    $serialNumber = trim((string)($body['serialNumber'] ?? ''));
-    $regNumber = trim((string)($body['regNumber'] ?? ''));
-    $fleetNumber = trim((string)($body['fleetNumber'] ?? ''));
+    $serialNumber = strtoupper(trim((string)($body['serialNumber'] ?? '')));
+    $regNumber = strtoupper(trim((string)($body['regNumber'] ?? '')));
+    $fleetNumber = strtoupper(trim((string)($body['fleetNumber'] ?? '')));
     $brand = trim((string)($body['brand'] ?? ''));
     if ($machineType === '') json_error('Machine type is required.');
     if ($model === '') json_error('Machine model is required.');
     if ($serialNumber === '' && $regNumber === '') {
         json_error('Enter a serial number or machine registration number.');
     }
+    foreach (['capacity'=>100,'location'=>255] as $field=>$max) {
+        if (strlen(trim((string)($body[$field] ?? ''))) > $max) json_error(ucfirst($field).' is too long.');
+    }
     return [
+        'capacity' => array_key_exists('capacity',$body) ? trim((string)$body['capacity']) : null,
+        'location' => array_key_exists('location',$body) ? trim((string)$body['location']) : null,
         'machineType' => $machineType,
         'model' => $model,
         'serialNumber' => $serialNumber !== '' ? $serialNumber : null,
@@ -1363,7 +1368,7 @@ if ($method === 'POST' && $action === 'add-machine') {
     if (!$stmt->fetch()) json_error('Select an active customer.', 422);
     $machine = normalized_machine_details($b);
     $newId = uuid();
-    db()->prepare('INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, fleet_number, brand, service_kit, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())')
+    db()->prepare('INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, fleet_number, brand, service_kit, status, capacity, location, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW())')
         ->execute([
             $newId,
             $id,
@@ -1375,6 +1380,7 @@ if ($method === 'POST' && $action === 'add-machine') {
             $machine['brand'],
             $machine['serviceKit'],
             'NOT_CHECKED',
+            $machine['capacity'], $machine['location'],
         ]);
     // If matching 250/500/1000/2000-hour templates already contain service
     // parts, seed this machine with its own editable service-kit copy. BELM can
@@ -1716,7 +1722,7 @@ if ($method === 'PUT' && $action === 'edit-machine') {
         $targetCustomerId = $newCustomerId;
     }
 
-    db()->prepare('UPDATE machines SET customer_id=?, machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=? WHERE id=?')
+    db()->prepare('UPDATE machines SET customer_id=?, machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=?, capacity=COALESCE(?,capacity), location=COALESCE(?,location) WHERE id=?')
         ->execute([
             $targetCustomerId,
             $machine['machineType'],
@@ -1726,6 +1732,7 @@ if ($method === 'PUT' && $action === 'edit-machine') {
             $machine['fleetNumber'],
             $machine['brand'],
             $machine['serviceKit'],
+            $machine['capacity'], $machine['location'],
             $_GET['machineId'],
         ]);
     log_activity($user, 'machine-edited', 'machine', $_GET['machineId'], ['model' => $machine['model']]);

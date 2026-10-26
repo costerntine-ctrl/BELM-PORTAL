@@ -50,9 +50,7 @@ if ($type === 'customer') {
     $user = require_auth();
     $roleName = trim((string)($user['roleName'] ?? ''));
     $assignedCustomerId = trim((string)($user['assignedCustomerId'] ?? ''));
-    $canView = true;
-
-    $isManager = belm_user_has_named_role($user, ['Super Admin','Workshop Manager','Engineer']);
+    $isManager = empty($user['isCustomerManaged']) && belm_user_has_named_role($user, ['Super Admin','Workshop Manager','Engineer']);
     $isTechnician = strcasecmp($roleName, 'Technician') === 0;
     $technicianOwnsScope = $isTechnician && $assignedCustomerId !== '' && $assignedCustomerId === (string)$machine['customer_id'];
 
@@ -65,6 +63,10 @@ if ($type === 'customer') {
         if ($isCustomerManaged && empty($machine['is_machinery_admin'])) $technicianOwnsScope = false;
     }
 
+    // A customer-bound technician must never read another company's image.
+    // General BELM viewers need Customers permission; financial/bank grants
+    // alone do not expose the machine photo register.
+    $canView = $isManager || ($isTechnician ? $technicianOwnsScope : in_array('customers', $user['allowedPages'] ?? [], true));
     $canUpload = $isManager || $technicianOwnsScope;
     $actorName = trim((string)($user['name'] ?? $actorName)) ?: $actorName;
 } else {

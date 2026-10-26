@@ -1935,8 +1935,8 @@
         <label><span>Registration Number</span><input name="regNumber" value="${escapeHtml(values.regNumber)}"></label>
         <label><span>Fleet Number</span><input name="fleetNumber" value="${escapeHtml(values.fleetNumber)}"></label>
         <label><span>Brand</span><input name="brand" value="${escapeHtml(values.brand)}"></label>
-        <label><span>Capacity (include unit)</span><input name="capacity" maxlength="100" placeholder="e.g. 45 tons" value="${escapeHtml(values.capacity)}"></label>
-        <label><span>Location</span><input name="location" maxlength="255" value="${escapeHtml(values.location)}"></label>
+        <label><span data-i18n>Capacity (include unit)</span><input name="capacity" maxlength="100" placeholder="e.g. 45 tons" value="${escapeHtml(values.capacity)}"></label>
+        <label><span data-i18n>Location</span><input name="location" maxlength="255" value="${escapeHtml(values.location)}"></label>
         <label><span>Service Kit</span><select name="serviceKit"><option value="OK" ${values.serviceKit === "OK" ? "selected" : ""}>OK</option><option value="NEW" ${values.serviceKit === "NEW" ? "selected" : ""}>NEW</option></select></label>
         <div class="belm-customer-machine-editor-error" data-customer-machine-editor-error hidden></div>
         <div class="belm-customer-machine-editor-actions"><button type="button" data-close-customer-machine-editor>Cancel</button><button type="submit" class="primary">${editing ? "Save Machine" : "Add Machine"}</button></div>

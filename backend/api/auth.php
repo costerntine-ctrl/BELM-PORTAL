@@ -74,6 +74,7 @@ if ($action === 'refresh' && $method === 'POST') {
         $stmt->execute([(string)($current['id'] ?? '')]);
         $user = $stmt->fetch();
         if (!$user) json_error('This staff account is no longer active.', 401);
+        belm_require_login_role((string)$user['role_name']);
 
         if ($user['role_name'] === 'Technician' && $user['assigned_customer_id']) {
             if (!$user['assigned_customer_name'] || $user['customer_deleted_at'] !== null || empty($user['customer_active'])) {
@@ -511,6 +512,7 @@ if ($action === 'unified-login' && $method === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && verify_portal_password($password, $user['password_hash'] ?? null, 'staff', (string)$user['id'])) {
+            belm_require_login_role((string)$user['role_name']);
             if ($contextSlug !== '' && !$isBelmContext) {
                 if ($user['role_name'] !== 'Technician') {
                     json_error('This customer app link is for the customer team. BELM staff should use their @BELM app link.', 403);
@@ -743,6 +745,7 @@ if ($action === 'login' && $method === 'POST') {
         record_failed_attempt('staff-login', $email);
         json_error('Invalid email or password', 401);
     }
+    belm_require_login_role((string)$user['role_name']);
     clear_rate_limit('staff-login', $email);
 
     if ($user['role_name'] === 'Technician') {

@@ -41,12 +41,17 @@
   }
  };
  const originalSelector='aside.belm-sidebar,aside.sidebar,#belmAdminSidebar,[data-role-sidebar],.cm-side,.csx-sidebar';
+ const settingsModule=!customer&&(role==='system'||/^\/(settings-manager|checklist-manager)(?:\/|$)/.test(location.pathname)||location.pathname.startsWith('/coordinator/notifications')||new URLSearchParams(location.search).get('module')==='settings');
  const report=role==='admin'?'/reports-manager/?module=reports':'/role-reports/';
  function entry(label,href,group='Workspace'){return {label,href,group};}
  const grantedPages=Array.isArray(user.allowedPages)?user.allowedPages:null;
  let departmentStates=null,modeState=null;
  const employeeFeature={ 'Daily Checklist':'check-up','Fuel Consumption':'fuel-usage','Operator Reports':'operator-reports'};
  function rowsForRole(){
+  if(settingsModule){
+   const entries=[['System Settings','/settings-manager/','settings'],['Users & Roles','/roles-manager/?module=settings','roles'],['Checklist Templates','/checklist-manager/?module=settings','checklist-templates'],['Notification Configuration','/coordinator/notifications/?module=settings','settings'],['Activity Log','/reports-manager/?view=activity&module=settings','activity-log']];
+   return [...entries.filter(([, ,page])=>role==='admin'||!grantedPages||grantedPages.includes(page)).map(([label,href])=>entry(label,href,'System Settings')),entry('Back to Main Menu','/portal-v2/','Navigation')];
+  }
   const rows=[entry('Dashboard',home)];
   for(const [label,href,page,department,modeRole] of menus[customer?'customer':'belm'][role]||[]){
    if(!customer&&role!=='admin'&&page&&grantedPages&&!grantedPages.includes(page))continue;
@@ -80,12 +85,12 @@
   const matches=[...nav.querySelectorAll('[aria-current]')];if(!matches.length&&/^\/(?:general-report|completed-maintenance-reports|store-audit-report|role-reports)(?:\/|$)/.test(location.pathname)){const reportsLink=[...nav.querySelectorAll('a')].find(a=>a.getAttribute('href')===report);reportsLink?.setAttribute('aria-current','page');}matches.sort((a,b)=>b.href.length-a.href.length).slice(1).forEach(a=>a.removeAttribute('aria-current'));
  }
  function boot(){
-  const css=document.createElement('link');css.rel='stylesheet';css.href='/persistent-role-sidebar.css?v=85-role-owned-menus';document.head.appendChild(css);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='/persistent-role-sidebar.css?v=86-system-settings-module';document.head.appendChild(css);
   const aside=document.createElement('aside');aside.id='belmPersistentNav';aside.setAttribute('aria-label','Role menu');
-  const brand=document.createElement('strong');brand.className='belm-persistent-brand';brand.textContent=(customer?'Customer':'BELM')+' · '+({admin:'Admin',workshop:'Workshop Manager',technician:'Technician',operator:'Operator',procurement:'Procurement',store:'Store Keeper',finance:'Finance / Accounts',bank:'Bank Controller',registration:'Registration & Sales',system:'System Coordinator'}[role]);
+  const brand=document.createElement('strong');brand.className='belm-persistent-brand';brand.textContent=settingsModule?'System Settings':(customer?'Customer':'BELM')+' · '+({admin:'Admin',workshop:'Workshop Manager',technician:'Technician',operator:'Operator',procurement:'Procurement',store:'Store Keeper',finance:'Finance / Accounts',bank:'Bank Controller',registration:'Registration & Sales',system:'System Coordinator'}[role]);
   const nav=document.createElement('nav');nav.setAttribute('aria-label','Main menu');
   const logout=document.createElement('button');logout.type='button';logout.textContent='Log out';logout.className='belm-persistent-logout';logout.onclick=()=>{['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token','belm_active_account_type','belm_preview_token'].forEach(k=>localStorage.removeItem(k));location.replace('/login?signed_out=1');};
-  aside.append(brand,nav,logout);document.body.appendChild(aside);
+  aside.append(brand,nav);if(!settingsModule)aside.appendChild(logout);document.body.appendChild(aside);
   const toggle=document.createElement('button');toggle.id='belmPersistentMenu';toggle.type='button';toggle.textContent='☰ Menu';toggle.setAttribute('aria-controls',aside.id);toggle.setAttribute('aria-expanded','false');
   const scrim=document.createElement('button');scrim.id='belmPersistentScrim';scrim.type='button';scrim.setAttribute('aria-label','Close menu');scrim.hidden=true;
   let previousFocus;

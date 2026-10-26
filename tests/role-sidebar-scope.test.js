@@ -10,9 +10,9 @@ function menu(payload,{pages,departments,mode}={}){
  vm.runInNewContext(source.slice(0,cut)+ending,context);
  return window.result?JSON.parse(JSON.stringify(window.result)):null;
 }
-const staff=['Super Admin','Workshop Manager','Technician','Procurement','Store Keeper','Registration & Sales','Finance / Accounts','Bank Controller','System Coordinator','MACHINE OPERATOR'];
+const staff=['Super Admin','Workshop Manager','Technician','Procurement','Store Keeper','Registration & Sales','Finance / Accounts','Bank Controller','MACHINE OPERATOR'];
 const company=['owner','workshop_manager','technician','operator','procurement','store_keeper','accounts'];
-test('all ten BELM and seven company roles have distinct, local role menus',()=>{
+test('all nine BELM and seven company roles have distinct, local role menus',()=>{
  for(const payload of [...staff.map(roleName=>({type:'staff',roleName})),...company.map(customerRole=>({type:'customer',customerRole}))]){
   const result=menu(payload);assert(result);assert(result.rows.length>=3);
   const urls=result.rows.map(r=>new URL(r.href,'https://portal.belmgeneraltech.co.tz').href);assert.equal(new Set(urls).size,urls.length,JSON.stringify(payload));
@@ -38,3 +38,5 @@ test('employee operator follows explicit card permissions without invitation rou
  const op=menu({type:'customer',customerRole:'operator',permissions:['fuel-usage']});assert(op.rows.some(r=>r.label==='Fuel Consumption'));assert(!op.rows.some(r=>r.label==='Daily Checklist'));assert(!op.rows.some(r=>r.href.startsWith('/operator/')));
 });
 test('unknown or expired accounts never inherit Admin menus',()=>{assert.equal(menu({type:'staff',roleName:'Unknown'}),null);assert.equal(menu({type:'staff',roleName:'Super Admin',exp:1}),null);});
+
+test('System Settings is a module without report, profile or logout destinations',()=>{const rows=menu({type:'staff',roleName:'System Coordinator'}).rows;assert(rows.some(r=>r.label==='System Settings'));assert(rows.every(r=>!['My Reports','General Report','My Profile','My Analysis','Logout'].includes(r.label)));});

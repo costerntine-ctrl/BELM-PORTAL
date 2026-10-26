@@ -38,6 +38,7 @@ function assigned_customer_for_role(string $roleId, ?string $assignedCustomerId,
 function role_payload(array $body, ?string $excludeRoleId = null): array {
     $name = trim((string)($body['name'] ?? ''));
     if ($name === '') json_error('Role name is required.');
+    belm_require_login_role($name);
     if (mb_strlen($name) > 100) json_error('Role name is too long.');
 
     $checkSql = 'SELECT id FROM roles WHERE LOWER(name) = LOWER(?) AND deleted_at IS NULL';
@@ -135,6 +136,7 @@ function require_registered_user_admin_confirmation(array $actor, array $body, b
 // ---- Roles ------------------------------------------------------------
 if ($method === 'GET' && $action === 'roles') {
     $roles = db()->query('SELECT * FROM roles WHERE deleted_at IS NULL')->fetchAll();
+    $roles = array_values(array_filter($roles, static fn($role): bool => !belm_is_settings_module_role((string)$role['name'])));
     foreach ($roles as &$r) {
         $r['allowedPages'] = json_decode($r['allowed_pages'], true);
         $r['permissions'] = json_decode($r['permissions'], true);
@@ -228,6 +230,7 @@ function role_ids_from_body(array $body): array {
     $ids = array_values(array_unique(array_filter(array_map('strval', $raw))));
     foreach ($ids as $roleId) {
         if (role_name($roleId) === null) json_error('One of the selected roles was not found.');
+        belm_require_login_role((string)role_name($roleId));
     }
     if (count($ids) === 0) json_error('Select at least one role.');
     return $ids;

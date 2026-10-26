@@ -532,9 +532,17 @@ function require_belm_customer_privacy(string $customerId, string $key, string $
 // Call at the top of any admin-only endpoint. Exits with 401 if not logged
 // in. Returns the token payload: id, email, name, roleName, allowedPages,
 // assignedCustomerId.
+function belm_is_settings_module_role(string $name): bool {
+    return in_array(strtolower(trim($name)), ['system coordinator', 'system settings'], true);
+}
+function belm_require_login_role(string $name): void {
+    if (belm_is_settings_module_role($name)) json_error('System Settings is a module, not a separate login role. Open it from an authorised staff account.', 403);
+}
+
 function require_auth(): array {
     $payload = current_token_payload();
     if (!$payload || ($payload['type'] ?? '') !== 'staff') json_error('Not authenticated', 401);
+    belm_require_login_role((string)($payload['roleName'] ?? ''));
 
     // A Technician's assignedCustomerId is baked into their JWT at login
     // time and never re-checked afterward. If that customer is later

@@ -275,7 +275,7 @@ function belm_customer_registration_profile(?string $mode): array {
         // registration. TECHNICAL_DEP remains controlled by BELM's module
         // switch, preserving the existing commercial gate.
         'workshopModuleActive' => $isPortalCwm ? 1 : 0,
-        'belmServiceProviderActive' => !$isPortalCwm,
+        'belmServiceProviderActive' => true,
         'label' => $isPortalCwm ? 'PORTAL-CWM' : 'TECHNICAL DEP',
     ];
 }

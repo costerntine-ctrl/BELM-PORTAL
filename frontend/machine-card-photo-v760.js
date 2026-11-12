@@ -131,7 +131,7 @@
     }catch(_){card.dataset.belmMachinePhotoReady='error'}
   }
   function scan(){
-    const selectors=['.machine-card','.assigned-machine-card','.belm-customer-machine-card','.belm-technician-machine-card'];
+    const selectors=['.fleet-machine-card','.machine-card','.assigned-machine-card','.belm-customer-machine-card','.belm-technician-machine-card'];
     document.querySelectorAll(selectors.join(',')).forEach(enhance);
   }
   scan();

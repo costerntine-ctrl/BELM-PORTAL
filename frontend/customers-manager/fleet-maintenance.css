@@ -1,0 +1,96 @@
+#machineMaintenancePage[hidden],
+.shell > [hidden] {
+  display: none !important;
+}
+.fleet-machine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  align-items: stretch;
+  gap: 16px;
+}
+.fleet-machine-card,
+.fleet-maintenance-sidebar {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border, #65839c);
+  border-radius: 18px;
+  background: var(--panel, transparent);
+  color: inherit;
+}
+.fleet-machine-grid .fleet-machine-card {
+  grid-template-rows: auto auto auto 1fr auto;
+}
+.fleet-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.fleet-card-heading h1,
+.fleet-card-heading h2,
+.fleet-card-heading p,
+.fleet-maintenance-sidebar h2 {
+  margin: 0;
+}
+.fleet-card-heading h2 { font-size: 1.25rem; }
+.fleet-card-heading p { margin-top: 4px; }
+.fleet-machine-photo {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(82, 128, 173, .14);
+}
+.fleet-machine-photo img { max-height: 180px; }
+.fleet-activity {
+  padding: 4px 9px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  font-size: .78rem;
+  text-align: center;
+}
+.fleet-machine-report {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(82, 128, 173, .14);
+  overflow-wrap: anywhere;
+}
+.fleet-machine-report p { margin: 8px 0; }
+.fleet-machine-report button { margin-top: 8px; }
+.fleet-maintenance-link { text-align: center; }
+.fleet-back { display: inline-block; margin-bottom: 14px; }
+.fleet-maintenance-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 235px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.fleet-maintenance-sidebar nav { display: grid; gap: 8px; }
+.fleet-maintenance-sidebar nav :is(a,button) {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--border, #65839c);
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+}
+.fleet-maintenance-sidebar button:disabled { opacity: .55; }
+.fleet-maintenance-sidebar .fleet-delete-machine { border-color: #d15555; }
+.fleet-machine-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.fleet-machine-facts dt { font-size: .82rem; }
+.fleet-machine-facts dd { margin: 3px 0 0; overflow-wrap: anywhere; font-weight: 700; }
+@media (max-width: 650px) {
+  .fleet-maintenance-layout { grid-template-columns: minmax(0, 1fr); }
+  .fleet-maintenance-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

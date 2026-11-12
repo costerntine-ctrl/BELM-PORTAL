@@ -447,6 +447,7 @@ if ($method === 'GET' && !$action) {
             $privacyMachine['privacyExpenseAccess'] = $expenseVisible;
             if (!$privacyMachine['privacyMaintenanceAccess']) {
                 $privacyMachine['alertReasons'] = [];
+                $privacyMachine['recentOperatorReports'] = [];
                 unset(
                     $privacyMachine['last_checked_at'],
                     $privacyMachine['last_service_hours'],
@@ -505,6 +506,7 @@ if ($method === 'GET' && $action === 'one') {
         $privacyMachine['privacyExpenseAccess'] = $developmentExpenseAccess || $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
         if (!$privacyMachine['privacyMaintenanceAccess']) {
             $privacyMachine['alertReasons'] = [];
+            $privacyMachine['recentOperatorReports'] = [];
             unset(
                 $privacyMachine['last_checked_at'],
                 $privacyMachine['last_service_hours'],
@@ -1916,26 +1918,32 @@ function fetch_machines_for_customers(array $customerIds): array {
         );
     }
 
-    // V397: preload the latest Operator message per machine in one query so
-    // Technician cards can show it directly in the large message panel. The
-    // existing 30-second Technician profile refresh keeps it live without an
-    // N+1 request for every card.
+    // Fetch a bounded report feed for the fleet in one query.
     $operatorStmt = db()->prepare(
-        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, operator_contact, message, status, created_at
-         FROM operator_reports
-         WHERE machine_id IN ($machineIn)
-         ORDER BY machine_id, created_at DESC, id DESC"
+        "SELECT machine_id, id, operator_name, operator_contact, message, status, created_at
+         FROM (
+           SELECT machine_id, id, operator_name, operator_contact, message, status, created_at,
+                  ROW_NUMBER() OVER (PARTITION BY machine_id ORDER BY created_at DESC, id DESC) AS report_rank
+           FROM operator_reports WHERE machine_id IN ($machineIn)
+         ) ranked
+         WHERE report_rank <= 5
+         ORDER BY machine_id, report_rank"
     );
     $operatorStmt->execute($machineIds);
     $operatorByMachine = [];
+    $recentOperatorReports = [];
     foreach ($operatorStmt->fetchAll() as $report) {
-        $operatorByMachine[(string)$report['machine_id']] = [
+        $machineId = (string)$report['machine_id'];
+        $summary = [
+            'message' => (string)$report['message'],
+            'createdAt' => (string)$report['created_at'],
+        ];
+        $recentOperatorReports[$machineId][] = $summary;
+        $operatorByMachine[$machineId] ??= $summary + [
             'id' => (string)$report['id'],
             'operatorName' => (string)$report['operator_name'],
             'operatorContact' => (string)($report['operator_contact'] ?? ''),
-            'message' => (string)$report['message'],
             'status' => (string)$report['status'],
-            'createdAt' => (string)$report['created_at'],
         ];
     }
 
@@ -1945,6 +1953,7 @@ function fetch_machines_for_customers(array $customerIds): array {
         $machine['alertReasons'] = $reasonsByMachine[$machineId] ?? [];
         $machine['supportAccessActive'] = !empty($supportMachines[$machineId]);
         $machine['latestOperatorMessage'] = $operatorByMachine[$machineId] ?? null;
+        $machine['recentOperatorReports'] = $recentOperatorReports[$machineId] ?? [];
         $grouped[$customerId][] = $machine;
     }
     return $grouped;

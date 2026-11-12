@@ -388,102 +388,165 @@
     if (previousValue) select.value = previousValue;
   }
 
-  function renderCustomers() {
-    const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    const filter = document.getElementById("statusFilter").value;
-    const filtered = customers.filter((customer) => {
-      const machines = customer.machines || [];
-      const searchable = [
-        customer.name, customer.email, customer.phone, customer.address,
-        customer.tinNumber, customer.vrn, customer.customerCode,
-        ...machines.flatMap((machine) => [machine.machineType, machine.brand, machine.model, machine.regNumber, machine.serialNumber]),
-      ];
-      const matchesQuery = searchable.some((value) => String(value || "").toLowerCase().includes(query));
-      const matchesFilter = !filter
-        || (filter === "ACTIVE" && Number(customer.isActive) === 1)
-        || (filter === "INACTIVE" && Number(customer.isActive) !== 1)
-        || (filter === "ATTENTION" && machines.some((machine) => isAttention(machine.status)));
-      return matchesQuery && matchesFilter;
-    });
+  const pageParams = new URLSearchParams(location.search);
+  const maintenancePage = pageParams.get("view") === "maintenance";
+  const maintenanceMachineId = pageParams.get("machine") || "";
+  const maintenancePanel = document.getElementById("machineMaintenancePage");
+  const fleetGrid = document.getElementById("customerGrid");
+  const activityOptions = {
+    NORMAL: "Normal",
+    MAINTENANCE_IN_PROGRESS: "On Maintenance",
+    GROUNDED: "Out of Operation (Grounded)",
+  };
 
-    const grid = document.getElementById("customerGrid");
-    if (!filtered.length) {
-      if (customers.length) {
-        grid.innerHTML = `<div class="empty"><strong>${customers.length.toLocaleString()} registered customer(s) are loaded but hidden by the current search/filter.</strong><br><button type="button" class="secondary" data-clear-customer-filters>Clear filters and show all</button></div>`;
-      } else {
-        grid.innerHTML = '<div class="empty">No customer records returned. Checking the connected database…</div>';
-      }
+  function machineName(machine) {
+    return [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType || "Machine";
+  }
+
+  function activityStatus(machine) {
+    const status = String(machine.operationalStatus || "NORMAL").toUpperCase();
+    return ["SERVICE_IN_PROGRESS", "CHECKUP_IN_PROGRESS"].includes(status) ? "MAINTENANCE_IN_PROGRESS" : status;
+  }
+
+  function renderFleetCard(customer, machine) {
+    const name = machineName(machine);
+    const activity = activityStatus(machine);
+    const checklistMessages = machine.alertReasons?.length
+      ? machine.alertReasons
+      : machine.lastCheckedAt ? [statusLabel(machine.status)] : [];
+    const reports = machine.privacyMaintenanceAccess === false ? [] : [
+      ...(machine.recentOperatorReports || (machine.latestOperatorMessage ? [machine.latestOperatorMessage] : []))
+        .filter(report => report.message?.trim())
+        .map(report => ({ title: "Operator Report", message: report.message, date: report.createdAt })),
+      ...checklistMessages.map(reason => ({ title: "Checklist Report", message: reason, date: machine.lastCheckedAt })),
+    ];
+    const maintenanceUrl = new URLSearchParams({ view: "maintenance", machine: machine.id });
+    const firstReport = reports[0];
+    return `<article class="fleet-machine-card" data-machine-id="${escapeHtml(machine.id)}" data-summary-photo-only="1">
+      <header class="machine-card-top fleet-card-heading">
+        <span class="eyebrow">${escapeHtml(String(machine.fleetNumber || machine.regNumber || machine.serialNumber || "Machine").toUpperCase())}</span>
+        <span class="fleet-activity op-${escapeHtml(activity)}">${escapeHtml(activityOptions[activity] || activity)}</span>
+      </header>
+      <div class="belm-machine-summary-visual fleet-machine-photo"><span>${escapeHtml(machine.machineType || "Machine")}</span></div>
+      <div class="fleet-card-heading">
+        <div><h2>${escapeHtml(name)}</h2><p>${escapeHtml(customer.name)} · ${escapeHtml(machine.machineType || "Machine")}</p></div>
+      </div>
+      <section class="fleet-machine-report" data-fleet-reports="${escapeHtml(JSON.stringify(reports))}" aria-label="Machine reports">
+        <div class="fleet-card-heading">
+          <strong data-fleet-report-title>${escapeHtml(firstReport?.title || "Machine Reports")}</strong>
+          <span data-fleet-report-count>${reports.length > 1 ? `1 / ${reports.length}` : ""}</span>
+        </div>
+        <p data-fleet-report-message>${escapeHtml(firstReport?.message || (machine.privacyMaintenanceAccess === false ? "Reports restricted by customer settings." : "No machine report updates yet."))}</p>
+        <small data-fleet-report-date>${firstReport?.date ? formatDateTime(firstReport.date) : ""}</small>
+        ${reports.length > 1 ? '<button type="button" data-fleet-report-next>Next report</button> <button type="button" data-fleet-report-pause aria-pressed="false">Pause updates</button>' : ""}
+      </section>
+      <a class="primary fleet-maintenance-link" href="/customers-manager/?${maintenanceUrl}"${embeddedInBelmWorkshop ? ' target="_top"' : ""}>Maintenance</a>
+    </article>`;
+  }
+
+  function renderMaintenancePage() {
+    const customer = customers.find(entry => (entry.machines || []).some(machine => machine.id === maintenanceMachineId));
+    const machine = customer?.machines.find(entry => entry.id === maintenanceMachineId);
+    if (!machine) {
+      maintenancePanel.innerHTML = '<a href="/customers-manager/">← Machines</a><p class="empty">Machine unavailable for this account.</p>';
       return;
     }
-    grid.innerHTML = filtered.map((customer) => {
-      const machines = customer.machines || [];
-      // V282 - the card itself blinks to match the worst machine status
-      // that customer has, so trouble is visible while scrolling the
-      // list without opening View Machines for every card.
-      const worstStatus = machines.reduce((worst, m) => {
-        const rank = { RED: 3, CRITICAL: 3, YELLOW: 2, ATTENTION: 2, GREEN: 1 };
-        const level = rank[String(m.status || "").toUpperCase()] || 0;
-        return level > worst.level ? { level, status: String(m.status || "").toUpperCase() } : worst;
-      }, { level: 0, status: "" }).status;
-      const blinkClass = ["RED", "CRITICAL"].includes(worstStatus) ? "customer-card-blink-red"
-        : ["YELLOW", "ATTENTION"].includes(worstStatus) ? "customer-card-blink-yellow" : "";
-      const belmProviderActive = typeof customer.belmServiceProviderActive === "boolean"
-        ? customer.belmServiceProviderActive
-        : !Boolean(customer.isMachineryAdmin);
-      return `<article class="customer-card ${Number(customer.isActive) === 1 ? "" : "inactive"} ${blinkClass}">
-        <div class="customer-card-head">
-          <div class="customer-card-title">
-            <p class="eyebrow">Customer</p>
-            <h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2>
-            <div class="customer-card-contact-lines" aria-label="Customer contact details">
-              <div class="customer-card-contact-row"><span>Phone</span><b title="${escapeHtml(customer.phone || 'Not recorded')}">${escapeHtml(customer.phone || 'Not recorded')}</b></div>
-              <div class="customer-card-contact-row"><span>Email</span><b title="${escapeHtml(customer.email || 'Not recorded')}">${escapeHtml(customer.email || 'Not recorded')}</b></div>
-              <div class="customer-card-contact-row"><span>Address</span><b title="${escapeHtml(customer.address || 'Not recorded')}">${escapeHtml(customer.address || 'Not recorded')}</b></div>
-              <div class="customer-card-contact-row"><span>Customer Code</span><b title="Technician site access code">${escapeHtml(customer.customerCode || 'Not generated')} ${customer.customerCode ? `<button type="button" class="customer-code-copy" data-copy-customer-code="${escapeHtml(customer.customerCode)}" title="Copy Customer Code">Copy</button>` : ''}</b></div>
-            </div>
-          </div>
-          <div class="customer-card-head-controls">
-            <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
-            <div class="customer-provider-control ${belmProviderActive ? "belm-on" : "customer-on"}" title="Switch maintenance control between ${escapeHtml(customer.name)} and BELM">
-              <span class="customer-provider-side" title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</span>
-              <label class="customer-provider-switch">
-                <input type="checkbox" data-card-provider-toggle="${escapeHtml(customer.id)}" ${belmProviderActive ? "checked" : ""} aria-label="BELM service provider for ${escapeHtml(customer.name)}">
-                <span class="customer-provider-slider" aria-hidden="true"></span>
-              </label>
-              <span class="customer-provider-side">BELM</span>
-              <strong class="customer-provider-state">${belmProviderActive ? "ON" : "OFF"}</strong>
-            </div>
-            <div class="customer-nonpayment-control ${Number(customer.isActive) === 1 ? "portal-on" : "portal-stopped"}" title="Portal service switch for non-payment: ${escapeHtml(customer.name)}">
-              <span class="customer-nonpayment-label">Non-payment</span>
-              <label class="customer-nonpayment-switch">
-                <input type="checkbox" data-card-portal-toggle="${escapeHtml(customer.id)}" ${Number(customer.isActive) === 1 ? "checked" : ""} aria-label="Portal service for ${escapeHtml(customer.name)}">
-                <span class="customer-nonpayment-slider" aria-hidden="true"></span>
-              </label>
-              <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
-            </div>
-          </div>
-        </div>
-        <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
-          <div class="customer-feed-head">
-            <strong>Communication history</strong>
-            <button type="button" class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View all</button>
-          </div>
-          <div class="customer-feed-body">Loading recent updates…</div>
-        </div>
-        <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
-          <button type="button" class="customer-quick-action action-black customer-quick-action-wide" data-view-machines="${escapeHtml(customer.id)}">View Customer Machine</button>
-          <button type="button" class="customer-quick-action action-manage customer-quick-action-wide" data-manage-customer="${escapeHtml(customer.id)}">Manage Customer</button>
-        </nav>
-        <div class="customer-card-legacy-actions" hidden aria-hidden="true">
-          <button type="button" data-quick-delete-machine="${escapeHtml(customer.id)}">Delete Machine</button>
-          <button type="button" data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
-          <button type="button" data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
-          <button type="button" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
-          ${isSuperAdmin ? `<button type="button" data-forget-customer="${escapeHtml(customer.id)}">Forget permanently</button>` : ""}
-        </div>
-      </article>`;
-    }).join("");
-    loadCustomerFeeds(filtered);
+    currentMachineListCustomerName = customer.name;
+    const name = machineName(machine);
+    const id = escapeHtml(machine.id);
+    const nameAttr = escapeHtml(name);
+    const activity = activityStatus(machine);
+    const maintenanceAllowed = machine.privacyMaintenanceAccess ?? (customer.privacyAccess?.maintenanceRecords !== false);
+    const partsAllowed = machine.privacyPartsAccess ?? (customer.privacyAccess?.storeAndParts !== false);
+    const action = (label, attrs, allowed) => allowed
+      ? `<button type="button" ${attrs}>${label}</button>`
+      : `<button type="button" disabled title="Customer access settings restrict this action">${label}</button>`;
+    const jobCard = maintenanceAllowed && customer.belmServiceProviderActive !== false
+      ? `<a href="/concept-dashboards/11-workshop-manager/job-cards.html?machine=${encodeURIComponent(machine.id)}">Job Card</a>`
+      : action("Job Card", `data-view-reports="${id}" data-machine-name="${nameAttr}" data-start-report-tab="jobcard"`, maintenanceAllowed);
+    maintenancePanel.innerHTML = `
+      <a class="fleet-back" href="/customers-manager/">← Machines</a>
+      <div class="fleet-maintenance-layout">
+        <aside class="fleet-maintenance-sidebar" aria-label="Maintenance sidebar">
+          <h2>Maintenance</h2>
+          <nav aria-label="Machine maintenance">
+            ${action("Machine Check-up", `data-checkup="${id}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${nameAttr}"`, maintenanceAllowed)}
+            ${jobCard}
+            ${action("Report History", `data-view-reports="${id}" data-machine-name="${nameAttr}"`, maintenanceAllowed)}
+            ${action("Machine Parts", `data-service-parts="${id}" data-machine-name="${nameAttr}"`, partsAllowed)}
+            ${!isTechnicianRole ? action("Edit Machine", `data-edit-machine="${id}" data-customer="${escapeHtml(customer.id)}"`, true) : ""}
+            ${!isTechnicianRole ? action("Delete Machine", `class="fleet-delete-machine" data-delete-machine="${id}"`, true) : ""}
+          </nav>
+          <label class="operational-status-picker op-${escapeHtml(activity)}">Machine Status
+            <select data-operational-status="${id}" ${maintenanceAllowed ? "" : "disabled"}>
+              ${Object.entries(activityOptions).map(([value, label]) =>
+                `<option value="${value}" ${value === activity ? "selected" : ""}>${label}</option>`).join("")}
+            </select>
+          </label>
+        </aside>
+        <section class="fleet-machine-card fleet-maintenance-summary" data-machine-id="${id}">
+          <header class="machine-card-top fleet-card-heading">
+            <div><p class="eyebrow">${escapeHtml(customer.name)}</p><h1>${nameAttr}</h1></div>
+            <span class="fleet-activity" data-maintenance-activity>${escapeHtml(activityOptions[activity] || activity)}</span>
+          </header>
+          <dl class="fleet-machine-facts">
+            ${[["Machine Type", machine.machineType], ["Fleet No.", machine.fleetNumber], ["Registration", machine.regNumber],
+                ["Serial", machine.serialNumber], ["Capacity", machine.capacity], ["Location", machine.location]]
+              .map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value || "—")}</dd></div>`).join("")}
+          </dl>
+        </section>
+      </div>`;
+  }
+
+  function renderCustomers() {
+    if (maintenancePage) {
+      renderMaintenancePage();
+      return;
+    }
+    const query = document.getElementById("searchInput").value.trim().toLowerCase();
+    const filter = document.getElementById("statusFilter").value;
+    const filtered = customers.flatMap(customer => (customer.machines || []).filter(machine => {
+      const searchable = [customer.name, machineName(machine), machine.machineType, machine.fleetNumber, machine.regNumber, machine.serialNumber];
+      return searchable.some(value => String(value || "").toLowerCase().includes(query))
+        && (!filter || (filter === "ATTENTION" && isAttention(machine.status))
+          || (filter === "ACTIVE" && Number(customer.isActive) === 1)
+          || (filter === "INACTIVE" && Number(customer.isActive) !== 1));
+    }).map(machine => ({ customer, machine })));
+    fleetGrid.innerHTML = filtered.length
+      ? filtered.map(({ customer, machine }) => renderFleetCard(customer, machine)).join("")
+      : '<p class="empty">No machines match these filters.</p>';
+  }
+
+  function advanceFleetReport(panel) {
+    const reports = JSON.parse(panel.dataset.fleetReports);
+    if (reports.length < 2) return;
+    const index = (Number(panel.dataset.reportIndex || 0) + 1) % reports.length;
+    const report = reports[index];
+    panel.dataset.reportIndex = String(index);
+    panel.querySelector("[data-fleet-report-title]").textContent = report.title;
+    panel.querySelector("[data-fleet-report-message]").textContent = report.message;
+    panel.querySelector("[data-fleet-report-count]").textContent = `${index + 1} / ${reports.length}`;
+    panel.querySelector("[data-fleet-report-date]").textContent = report.date ? formatDateTime(report.date) : "";
+  }
+
+  fleetGrid.addEventListener("click", event => {
+    const next = event.target.closest("[data-fleet-report-next]");
+    if (next) advanceFleetReport(next.closest("[data-fleet-reports]"));
+    const button = event.target.closest("[data-fleet-report-pause]");
+    if (!button) return;
+    const paused = button.getAttribute("aria-pressed") === "true";
+    button.setAttribute("aria-pressed", String(!paused));
+    button.textContent = paused ? "Pause updates" : "Resume updates";
+  });
+
+  if (!maintenancePage) {
+    setInterval(() => {
+      if (document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      for (const panel of fleetGrid.querySelectorAll("[data-fleet-reports]")) {
+        if (panel.matches(":hover, :focus-within") || panel.querySelector('[aria-pressed="true"]')) continue;
+        advanceFleetReport(panel);
+      }
+    }, 7000);
   }
 
   let currentMachineListCustomerName = "";
@@ -687,27 +750,6 @@
     if (machines.length) loadServiceDueBadges();
   }
 
-  // V444: "BELM FLEET — All Machines" — accessible via
-  // /customers-manager/?view=all-machines, showing every customer's
-  // machines in one list, reusing the exact same card (and Edit/Delete/
-  // Forget wiring) as a single customer's machine list. "Add machine" is
-  // hidden here since there's no single customer to attach a new machine
-  // to from this combined view.
-  function openAllMachinesList() {
-    currentMachineListCustomerName = "";
-    const allMachines = customers.flatMap((customer) =>
-      (customer.machines || []).map((machine) => ({ machine, customer })));
-    document.getElementById("machineListTitle").textContent = `BELM FLEET — All Machines (${allMachines.length})`;
-    document.getElementById("machineListAddButton").classList.add("hidden");
-    document.getElementById("machineListBody").innerHTML = allMachines.length
-      ? `<div class="machine-list">${allMachines
-          .map(({ machine, customer }) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {}, customer.name))
-          .join("")}</div>`
-      : '<div class="empty">No machines registered on the portal yet.</div>';
-    document.getElementById("machineListDialog").showModal();
-    if (allMachines.length) loadServiceDueBadges();
-  }
-
   async function load() {
     if (!token) {
       window.location.href = "/login";
@@ -748,16 +790,13 @@
           }, 0);
         }
       }
-      if (!requestedCustomerId && requestedView === "all-machines") {
-        window.setTimeout(() => openAllMachinesList(), 0);
-      }
       if (!customers.length) await showCustomerDataDiagnostic();
     } catch (error) {
       const message = String(error.message || "Could not load customers.");
       const permissionHint = /access|permission|403/i.test(message)
         ? '<br>This login may not have <b>Customers & Machines</b> permission.'
         : '';
-      document.getElementById("customerGrid").innerHTML = `<div class="empty"><strong>Could not load registered customers.</strong><br>${escapeHtml(message)}${permissionHint}<br><button type="button" class="secondary" data-retry-customers>Retry</button></div>`;
+      (maintenancePage ? maintenancePanel : fleetGrid).innerHTML = `<div class="empty"><strong>Could not load machines.</strong><br>${escapeHtml(message)}${permissionHint}<br><button type="button" class="secondary" data-retry-customers>Retry</button></div>`;
       showAlert(message, true);
     }
   }
@@ -1616,11 +1655,11 @@
     }
   }
 
-  async function openMachineReports(machineId, machineName) {
+  async function openMachineReports(machineId, machineName, initialTab = "checklist") {
     document.getElementById("machineListDialog").close();
     currentReportMachineId = String(machineId || "");
     currentReportMachineName = machineName || "Machine";
-    currentReportTab = "checklist";
+    currentReportTab = initialTab;
     cachedMachineReportsKey = "";
     cachedMachineJobCardsKey = "";
     cachedMachineOperatorReportsKey = "";
@@ -2497,7 +2536,8 @@
     openMachine(customers.find((customer) => customer.id === event.currentTarget.dataset.addMachine));
   });
 
-  document.getElementById("machineListBody")?.addEventListener("click", (event) => {
+  function handleMachineAction(event) {
+    if (event.target.closest("[data-retry-customers]")) { load(); return; }
     const addMachine = event.target.closest("[data-add-machine]");
     const editMachine = event.target.closest("[data-edit-machine]");
     const deleteMachine = event.target.closest("[data-delete-machine]");
@@ -2506,7 +2546,7 @@
     const doCheckup = event.target.closest("[data-checkup]");
     const viewExpenseReceipts = event.target.closest("[data-view-expense-receipts]");
     const serviceParts = event.target.closest("[data-service-parts]");
-    if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName);
+    if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName, viewReports.dataset.startReportTab);
     if (doCheckup) openMachineCheckup(doCheckup.dataset.checkup, doCheckup.dataset.machineType, doCheckup.dataset.machineName);
     if (viewExpenseReceipts) openExpenseReceipts(viewExpenseReceipts.dataset.viewExpenseReceipts, viewExpenseReceipts.dataset.machineName);
     if (serviceParts) openServiceParts(serviceParts.dataset.serviceParts, serviceParts.dataset.machineName);
@@ -2518,28 +2558,47 @@
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
     if (forgetMachineButton) forgetMachine(forgetMachineButton.dataset.forgetMachine);
-  });
-  document.getElementById("machineListBody")?.addEventListener("change", async (event) => {
+  }
+
+  async function saveMachineActivity(event) {
     const select = event.target.closest("[data-operational-status]");
     if (!select) return;
     const machineId = select.dataset.operationalStatus;
     const label = select.closest(".operational-status-picker");
     const previousClass = label.className;
+    const machine = customers.flatMap(customer => customer.machines || []).find(entry => entry.id === machineId);
+    const previousStatus = maintenancePage ? activityStatus(machine || {}) : machine?.operationalStatus || "NORMAL";
+    const nextStatus = select.value;
     select.disabled = true;
     try {
       await api(`/customers/machines/${machineId}/status`, {
         method: "PUT",
         body: JSON.stringify({ operationalStatus: select.value }),
       });
-      label.className = `operational-status-picker op-${select.value}`;
+      if (machine) machine.operationalStatus = nextStatus;
+      label.className = `operational-status-picker op-${nextStatus}`;
+      const badge = maintenancePanel.querySelector("[data-maintenance-activity]");
+      if (badge) badge.textContent = activityOptions[nextStatus];
       showAlert("Machine activity status updated — customer will see this on their portal.");
     } catch (error) {
       label.className = previousClass;
+      select.value = previousStatus;
       showAlert(error.message, true);
     } finally {
       select.disabled = false;
     }
-  });
+  }
+
+  for (const section of [document.getElementById("machineListBody"), maintenancePanel]) {
+    section.addEventListener("click", handleMachineAction);
+    section.addEventListener("change", saveMachineActivity);
+  }
+  if (maintenancePage) {
+    document.title = "Machine Maintenance — BELM Portal";
+    document.querySelectorAll(".shell > .hero, .shell > .metrics, #machineTypeSyncPanel, .customer-toolbar, #customerGrid")
+      .forEach(section => { section.hidden = true; });
+    maintenancePanel.hidden = false;
+  }
 
   // V269 - Machine Type <-> Checklist Template sync check.
   async function loadMachineTypeSync() {

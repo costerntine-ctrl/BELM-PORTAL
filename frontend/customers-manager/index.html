@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script>if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("belm-embedded");document.documentElement.style.background="#0b1728";}</script>
     <style>html.belm-embedded,html.belm-embedded body{background:#0b1728!important;color:#e7eef8!important}</style>
-    <title>BELM WM Portal — Customer Overview</title>
+    <title>BELM WM Portal — Machine Overview</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -13,6 +13,7 @@
     <!-- Regression baseline: /customers-manager/manager.css?v=377-admin-machine-management-activity-status -->
     <!-- Regression baseline: /customers-manager/manager.css?v=382-full-card-alert-range -->
     <link rel="stylesheet" href="/customers-manager/manager.css?v=74-fleet-viewport-scroll">
+    <link rel="stylesheet" href="/customers-manager/fleet-maintenance.css?v=88">
     <link rel="stylesheet" href="/customers-manager/belm-brand-card.css?v=619-restored-full-overview">
     <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
     <link rel="stylesheet" href="/customers-manager/no-sidebar.css?v=724-customer-overview-clean">
@@ -42,8 +43,8 @@
       <section class="hero">
         <div>
           <p class="eyebrow">Fleet Status</p>
-          <h1>Customers Overview</h1>
-          <p>Customer information and machine health arranged in clear cards. New customers are registered from the <a href="/admin-applications/">Registrations</a> page.</p>
+          <h1>Machine Overview</h1>
+          <p>Open Maintenance to check a machine, view its reports, or update its status.</p>
         </div>
       </section>
 
@@ -70,17 +71,18 @@
       </section>
 
       <section class="customer-toolbar">
-        <input id="searchInput" placeholder="Search company, email, phone, TIN, VRN or machine" aria-label="Search customers">
-        <select id="statusFilter" aria-label="Filter customers">
-          <option value="">All customers</option>
+        <input id="searchInput" placeholder="Search machine, fleet number, serial or customer" aria-label="Search machines">
+        <select id="statusFilter" aria-label="Filter machines">
+          <option value="">All machines</option>
           <option value="ACTIVE">Active customers</option>
           <option value="INACTIVE">Inactive customers</option>
           <option value="ATTENTION">Machine needs attention</option>
         </select>
         <button id="clearCustomerFiltersButton" class="secondary" type="button">Clear filters</button>
-        <button id="refreshCustomersButton" class="secondary" type="button">Refresh customers</button>
+        <button id="refreshCustomersButton" class="secondary" type="button">Refresh machines</button>
       </section>
-      <section id="customerGrid" class="customer-grid"><div class="loading">Loading customers…</div></section>
+      <section id="customerGrid" class="customer-grid fleet-machine-grid"><div class="loading">Loading machines…</div></section>
+      <section id="machineMaintenancePage" hidden><div class="loading">Loading machine…</div></section>
     </main>
 
     <dialog id="customerDialog">
@@ -269,8 +271,8 @@
 
     <script src="/admin-access.js?v=718-context-back"></script>
     <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
-    <script src="/customers-manager/app.js?v=87-audit-fixes"></script>
-    <script src="/machine-card-photo-v760.js?v=81-machine-photo-upload"></script>
+    <script src="/customers-manager/app.js?v=88-fleet-maintenance"></script>
+    <script src="/machine-card-photo-v760.js?v=88-fleet-maintenance"></script>
     <script src="/shared-machine-card-v827.js?v=83-photo-led-card"></script>
   </body>
 </html>

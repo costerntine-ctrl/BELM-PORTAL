@@ -14,14 +14,15 @@
 
 <link rel="stylesheet" href="/dashboard-preferences.css?v=54">
 <script defer src="/dashboard-preferences.js?v=54"></script>
+<link rel="stylesheet" href="/job-card-professional.css?v=92">
 </head>
 <body>
   <header class="topbar">
     <a href="/tech" class="brand"><span class="mark">B</span><span><b>BELM Technician</b><small>Job Card Workspace</small></span></a>
-    <nav><a href="/tech">← Check-up</a><a href="/delivery-notes/?actor=tech">Delivery Notes</a><button type="button" id="themeButton" data-belm-theme-toggle>Light / Dark</button><button type="button" id="refreshButton">Refresh</button></nav>
+    <nav><a href="/tech">← Check-up</a><a href="/delivery-notes/?actor=tech">Delivery Notes</a><a href="/weekly-maintenance/">Weekly Report</a><button type="button" id="themeButton" data-belm-theme-toggle>Light / Dark</button><button type="button" id="refreshButton">Refresh</button></nav>
   </header>
   <main>
-    <section class="hero"><div class="hero-copy"><p>TECHNICIAN WORK</p><h1>My Job Cards</h1><span>Receive Job Cards assigned by Workshop Manager, diagnose/inspect, submit a technical report for review, perform approved maintenance, test, then select the final result. Technician does not assign Job Cards.</span></div><div class="tech-identity"><small>LOGGED IN TECHNICIAN</small><b id="techIdentity">Technician</b></div></section>
+    <section class="hero"><div class="hero-copy"><p>TECHNICIAN WORK</p><h1>My Job Cards</h1><span>Receive your job, record the diagnosis, then complete approved repairs and testing.</span></div><div class="tech-identity"><small>LOGGED IN TECHNICIAN</small><b id="techIdentity">Technician</b></div></section>
     <div id="alertBox" class="alert hidden"></div>
     <section class="summary" id="summary"></section>
     <section class="toolbar">
@@ -56,8 +57,8 @@
 
   <script src="/technician-job-cards/submit-guard-v747.js?v=747-case-duplicate-guard"></script>
   <script src="/spare-request-ui-v741.js?v=741-spare-acceptance"></script>
-  <script src="/technician-job-cards/job-cards.js?v=747-case-duplicate-guard"></script>
+  <script src="/technician-job-cards/job-cards.js?v=92-simple-professional"></script>
   <script src="/job-card-detail-v734.js?v=734-job-card-detail"></script>
-  <script src="/job-card-technician-v814.js?v=814-job-card-process"></script>
+  <script src="/job-card-technician-v814.js?v=92-simple-professional"></script>
 </body>
 </html>

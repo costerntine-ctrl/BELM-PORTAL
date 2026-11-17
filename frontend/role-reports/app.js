@@ -93,6 +93,7 @@
  // No report copy or manual sync job is needed; a saved record is visible on the next load.
  if(!analysisCentre&&['super_admin','customer_admin','workshop_manager','technician'].includes(role)){
    const technical=groups.find(group=>/Technician|Technical/.test(group.title))||groups.find(group=>group.cards.some(card=>['CHECKLIST','MAINTENANCE','JOB CARDS','JOB CARD RECORDS','MACHINES'].includes(card.tag)))||groups[0];
+   if(technical)technical.cards.push(c('WEEKLY','Weekly Maintenance Accomplishment','Completed work, verified evidence, documentation gaps and outstanding follow-ups.','/weekly-maintenance/'));
    if(technical)technical.cards.push(c('COMPLETED','Completed Maintenance Reports','Completed Job Card and maintenance reports, searchable in pages of 20.','/completed-maintenance-reports/?actor='+(isCustomer?'customer':'admin')));
  }
  const seenReports=new Set();

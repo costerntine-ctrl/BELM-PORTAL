@@ -222,6 +222,7 @@ function jcv814_process(array $job, int $openSpares): array {
 }
 
 $ctx=jcv814_ctx($payload);
+if(str_starts_with($action,'weekly-')){require __DIR__.'/weekly_maintenance.php';exit;}
 
 if($method==='GET'&&$action==='list'){
     $params=[];$where=["UPPER(COALESCE(j.status,''))<>'CANCELLED'"];
@@ -289,7 +290,7 @@ if($method==='PUT'&&$action==='submit-report'&&$id!==''){
     if(in_array($status,['REPORT_REVIEW','COMPLETED','CANCELLED'],true))json_error($status==='REPORT_REVIEW'?'This Technician Report is already waiting for Workshop Manager review.':'This Job Card is closed.',409);
     if(empty($job['received_at']))json_error('Receive / acknowledge this Job Card before submitting diagnosis.',409);
     $b=body();
-    foreach(['diagnosis'=>'Diagnosis / Inspection','explanation'=>'Explanation','findings'=>'Findings','rootCause'=>'Root Cause','solution'=>'Solution'] as $key=>$label){if(trim((string)($b[$key]??''))==='')json_error($label.' is required.',422);}
+    foreach(['diagnosis'=>'Diagnosis / Inspection','findings'=>'Findings','solution'=>'Proposed solution'] as $key=>$label){if(trim((string)($b[$key]??''))==='')json_error($label.' is required.',422);}
     $requiredSpare=trim((string)($b['requiredSpare']??''));$qty=(float)($b['requiredSpareQty']??1);
     if($requiredSpare!==''&&$qty<=0)json_error('Required Spare quantity must be above zero.',422);
     $repeat=!empty($b['repeatIssue']);$report=jcv814_report_text($b);

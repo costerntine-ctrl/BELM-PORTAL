@@ -1837,3 +1837,18 @@ ALTER TABLE customer_sales_payments ADD COLUMN IF NOT EXISTS request_key VARCHAR
 ALTER TABLE customer_sales_payments ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_payment_request_key
   ON customer_sales_payments(customer_id, request_key) WHERE request_key IS NOT NULL;
+
+-- V92: immutable weekly workshop snapshots. No existing source rows are changed.
+CREATE TABLE IF NOT EXISTS weekly_maintenance_snapshots (
+  id VARCHAR(36) PRIMARY KEY,
+  actor_kind VARCHAR(12) NOT NULL,
+  actor_id VARCHAR(36) NOT NULL,
+  customer_id VARCHAR(36) NULL,
+  actor_name VARCHAR(255) NOT NULL,
+  report_from DATE NOT NULL,
+  report_to DATE NOT NULL,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_weekly_maintenance_scope
+  ON weekly_maintenance_snapshots(actor_kind, customer_id, created_at DESC);

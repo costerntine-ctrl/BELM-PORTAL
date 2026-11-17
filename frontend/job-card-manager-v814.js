@@ -16,6 +16,12 @@
   let technicians=[];
   let busy=false;
   let listFilter='active';
+  const pageParams=new URLSearchParams(location.search);
+  let workspacePage=['create','process','detail'].includes(pageParams.get('jcSection'))?pageParams.get('jcSection'):'list';
+  let selectedJob=pageParams.get('jobId')||'';
+  function workspaceUrl(page,id=''){const u=new URL(location.href);u.searchParams.set('jcSection',page);u.searchParams.delete('jobId');if(id)u.searchParams.set('jobId',id);return u.pathname+u.search;}
+  function navigateWorkspace(page,id=''){workspacePage=page;selectedJob=String(id);history.pushState({},'',workspaceUrl(page,id));showWorkspace();childWin.scrollTo?.(0,0);}
+  window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.search);workspacePage=['create','process','detail'].includes(p.get('jcSection'))?p.get('jcSection'):'list';selectedJob=p.get('jobId')||'';showWorkspace();});
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const up=v=>String(v||'').trim().toUpperCase();
@@ -58,6 +64,13 @@
       html[data-theme="dark"] .jcm814-badge{background:#143154;color:#a8d0ff}html[data-theme="dark"] .jcm814-badge.pending{background:#403511;color:#f7d96d}html[data-theme="dark"] .jcm814-badge.ok{background:#153b2b;color:#8ee4b6}html[data-theme="dark"] .jcm814-badge.red{background:#401d23;color:#ffaaaa}
       @media(max-width:1000px){.jcm814-flow{grid-template-columns:repeat(4,1fr)}.jcm814-create{grid-template-columns:1fr 1fr}.jcm814-create .wide{grid-column:1/-1}}
       @media(max-width:620px){.jcm814-flow{grid-template-columns:repeat(2,1fr)}.jcm814-create{grid-template-columns:1fr}.jcm814-create .wide{grid-column:auto}.jcm814-actions{align-items:stretch;flex-direction:column}.jcm814-button{width:100%}.jcm814-register-toolbar{align-items:flex-start;flex-direction:column}}
+      .jcm92-menu{display:flex;flex-wrap:wrap;gap:8px;padding:14px;border-bottom:1px solid var(--line)}.jcm92-menu a{padding:10px 14px;border:1px solid var(--line);border-radius:9px;text-decoration:none;color:var(--ink);font-weight:700;font-size:14px}.jcm92-menu a[aria-current]{background:#0b67c2;color:white;border-color:#0b67c2}
+      #jcm92Status{margin:0;padding:10px 14px;font-size:13px;color:var(--muted)}#jcm92Status.error{color:#d13232}
+      .jcm814[data-page] .jcm814-flow,.jcm814[data-page] .jcm814-create,.jcm814[data-page] .jcm814-toolbar,.jcm814[data-page] .jcm814-table-wrap{display:none}
+      .jcm814[data-page="list"] .jcm814-toolbar{display:flex}.jcm814[data-page="list"] .jcm814-table-wrap{display:block}.jcm814[data-page="create"] .jcm814-create{display:grid}.jcm814[data-page="process"] .jcm814-flow{display:grid}
+      #jcm92Detail{padding:18px}#jcm92Detail[hidden]{display:none}.jcm92-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.jcm92-facts>div{padding:12px;border:1px solid var(--line);border-radius:9px}.jcm92-facts dt{font-size:12px;color:var(--muted);margin-bottom:6px}.jcm92-facts dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.5}
+      .jcm814-table{min-width:760px}.jcm814-table th,.jcm814-table td{font-size:13px}.jcm814-table small{font-size:12px}.jcm814-row-actions button{font-size:13px;padding:9px 11px}.jcm814-table :is(th,td):nth-child(3),.jcm814-table :is(th,td):nth-child(4),.jcm814-table :is(th,td):nth-child(7),.jcm814-table :is(th,td):nth-child(8){display:none}.jcm814-create label{font-size:13px}.jcm814-head p{font-size:13px}.jcm814-create label:has(#jcm814CaseType){display:none}
+      @media(max-width:620px){.jcm92-facts{grid-template-columns:1fr}.jcm92-menu a{flex:1;text-align:center}.jcm814-head{align-items:start;flex-direction:column}}
     `;doc.head.appendChild(s);
   }
 
@@ -72,7 +85,8 @@
     if(!grid)return;
     const root=doc.createElement('section');root.id='jobCardManagerV814';root.className='jcm814';
     root.innerHTML=`
-      <div class="jcm814-head"><div><h2>Digital Job Card Control</h2><p>One process for BELM and Customer Workshops. Permissions and technicians remain separated by organization.</p></div><span class="scope">${actor==='customer'?'CUSTOMER WORKSHOP':'BELM WORKSHOP'}</span></div>
+      <div class="jcm814-head"><div><h2>Job Cards</h2><p>Assign work, follow progress and review completed reports.</p></div><span class="scope">${actor==='customer'?'CUSTOMER WORKSHOP':'BELM WORKSHOP'}</span></div>
+      <nav class="jcm92-menu" aria-label="Job Card menu"><a href="${esc(workspaceUrl('list'))}" data-jc-page="list">Active Job Cards</a><a href="${esc(workspaceUrl('create'))}" data-jc-page="create">Create & Assign</a><a href="${esc(workspaceUrl('process'))}" data-jc-page="process">Process Guide</a><a id="jcm92Completed" target="_top">Completed Reports</a></nav><p id="jcm92Status" role="status" aria-live="polite"></p><section id="jcm92Detail" hidden></section>
       <div class="jcm814-flow">${processSteps.map((x,i)=>`<span>${i+1}. ${esc(x)}</span>`).join('')}</div>
       <form id="jcm814Create" class="jcm814-create">
         <label>Work case / machine<select id="jcm814Case" required><option value="">Loading cases...</option></select></label>
@@ -87,7 +101,11 @@
     grid.parentNode.insertBefore(root,grid);
     const oldTitle=doc.querySelector('.grid .panel .panel-head h2');if(oldTitle)oldTitle.textContent='Live Job Card / Breakdown Queue';
     const oldCopy=doc.querySelector('.grid .panel .panel-head p');if(oldCopy)oldCopy.textContent='Active machine issues remain here until Final Result = OK. Completed work is removed from the active queue but remains available in Job Card reports and process history.';
-    const completedUrl=new URL('/completed-maintenance-reports/',location.origin);completedUrl.searchParams.set('actor',actor);completedUrl.searchParams.set('returnTo',location.pathname+location.search);doc.getElementById('jcm814Completed').href=completedUrl.pathname+completedUrl.search;
+    const completedUrl=new URL('/completed-maintenance-reports/',location.origin);completedUrl.searchParams.set('actor',actor);completedUrl.searchParams.set('returnTo',location.pathname+location.search);doc.getElementById('jcm814Completed').href=completedUrl.pathname+completedUrl.search;doc.getElementById('jcm92Completed').href=completedUrl.pathname+completedUrl.search;
+    root.querySelector('.jcm92-menu').addEventListener('click',event=>{const link=event.target.closest('[data-jc-page]');if(!link||event.ctrlKey||event.metaKey||event.shiftKey)return;event.preventDefault();navigateWorkspace(link.dataset.jcPage);});
+    doc.getElementById('jcm92Detail').addEventListener('click',event=>{if(event.target.closest('[data-jc-back]'))navigateWorkspace('list');else rowAction(event);});
+    root.querySelector('.jcm814-flow').addEventListener('click',event=>{if(event.target.closest('[data-jcm815-action="assign"]')){event.preventDefault();event.stopImmediatePropagation();navigateWorkspace('create');}},true);
+    showWorkspace();
     doc.getElementById('jcm814Search').addEventListener('input',renderRows);
     doc.getElementById('jcm814Refresh').addEventListener('click',refresh);
     doc.getElementById('jcm814Case').addEventListener('change',caseChanged);
@@ -97,7 +115,7 @@
     refresh();
   }
 
-  function note(message,type=''){const el=childDoc?.getElementById('jcm814Note');if(!el)return;el.textContent=message;el.className='jcm814-note'+(type?' '+type:'')}
+  function note(message,type=''){const el=childDoc?.getElementById('jcm814Note');if(!el)return;el.textContent=message;el.className='jcm814-note'+(type?' '+type:'');const status=childDoc?.getElementById('jcm92Status');if(status){status.textContent=message;status.className=type;}}
   function caseLabel(c){const machine=[c.brand,c.model].filter(Boolean).join(' ')||val(c,'machineType','machine_type')||'Machine';const fleet=val(c,'fleetNumber','fleet_number');return `${machine}${fleet?` · Fleet ${fleet}`:''} · ${val(c,'title','description')||'Work case'}`}
 
   async function refresh(){
@@ -135,7 +153,7 @@
     const button=childDoc.getElementById('jcm814Assign');button.disabled=true;button.textContent='Assigning...';
     try{
       const result=await workflowApi('/job-card',{method:'POST',body:JSON.stringify({caseId,technicianId:techId,title,jobCardMode:'auto',temporaryOverride:override,workshopInstruction:instruction})});
-      note(`Job Card ${result.jobCardNo||''} assigned to ${tech?.name||'Technician'}. Step 2 is Technician Receive.`,'ok');childDoc.getElementById('jcm814Instruction').value='';await refresh();childDoc.getElementById('refreshButton')?.click();
+      note(`Job Card ${result.jobCardNo||''} assigned to ${tech?.name||'Technician'}. Step 2 is Technician Receive.`,'ok');childDoc.getElementById('jcm814Instruction').value='';await refresh();navigateWorkspace('list');childDoc.getElementById('refreshButton')?.click();
     }catch(e){note(e.message,'error')}
     finally{button.disabled=false;button.textContent='Create Job Card & Assign Technician'}
   }
@@ -187,43 +205,32 @@
         <td class="jcm814-problem"><b>${esc(problem)}</b><small><span class="jcm814-badge ${badgeClass}">${esc(status==='COMPLETED'?'CLOSED':pendingText==='—'?'ON PROCESS':'PENDING')}</span></small><small>${esc(pendingText)}</small>${item.requiredSpare?`<small>Spare: ${esc(item.requiredSpare)}</small>`:''}</td>
         <td class="jcm814-dates"><small>Created</small><b>${esc(created)}</b><small>Updated: ${esc(updated)}</small><small><span class="jcm814-badge ${status==='COMPLETED'?'ok':review?'pending':''}">${esc(status.replaceAll('_',' '))}</span></small></td>
         <td>${review?`<div class="jcm814-row-actions"><button class="approve" data-review="approve">Approve Maintenance${item.requiredSpare?' + Spare':''}</button><button class="return" data-review="return">Return Report</button></div>`:`<span class="jcm814-badge ${item.maintenanceApproved?'ok':''}">${item.maintenanceApproved?'MAINTENANCE APPROVED':'—'}</span><small>${esc(item.managerReview||'')}</small>`}</td>
-        <td><div class="jcm814-row-actions">${hasFinalReport(item)?'<button data-report>Report PDF</button>':'<span class="jcm814-badge pending">FINAL REPORT PENDING</span>'}${item.findings?'<button data-view>View Report</button>':''}</div><small>Final: ${esc(item.finalResult||'Pending')}</small></td>
+        <td><div class="jcm814-row-actions">${hasFinalReport(item)?'<button data-report>Report PDF</button>':'<span class="jcm814-badge pending">FINAL REPORT PENDING</span>'}<button data-view>View Details</button></div><small>Final: ${esc(item.finalResult||'Pending')}</small></td>
       </tr>`;
     }).join(''):'<tr><td colspan="9">No Job Cards in this filter.</td></tr>';
+    if(workspacePage==='detail')renderDetail();
+  }
+
+  function showWorkspace(){
+    if(!childDoc)return;
+    const root=childDoc.getElementById('jobCardManagerV814');if(!root)return;
+    root.dataset.page=workspacePage;
+    root.querySelectorAll('[data-jc-page]').forEach(link=>{if(link.dataset.jcPage===workspacePage)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
+    const detail=childDoc.getElementById('jcm92Detail');detail.hidden=workspacePage!=='detail';
+    if(workspacePage==='detail')renderDetail();
+  }
+  function renderDetail(){
+    const box=childDoc?.getElementById('jcm92Detail');if(!box)return;
+    const item=items.find(row=>String(row.id)===selectedJob);
+    if(!item){box.innerHTML='<button type="button" data-jc-back>← Active Job Cards</button><p>Job Card unavailable in the active queue. Check Completed Reports or refresh.</p>';return;}
+    const fields=[['Machine',item.machineLabel],['Fleet',item.fleetNumber],['Customer',item.customerName],['Technician',item.technicianName],['Status',up(item.status).replaceAll('_',' ')],['Created',fmtDateTime(item.createdAt)],['Updated',fmtDateTime(item.updatedAt)],['Priority',item.priority],['Problem',item.faultDescription||item.title],['Diagnosis',item.diagnosis],['Explanation',item.explanation],['Findings',item.findings],['Root cause',item.rootCause],['Solution',item.solution],['Work done',item.workDone],['Required spare',item.requiredSpare],['Pending / follow-up',item.pendingReason],['Manager review',item.managerReview],['Test duration',String(item.testDurationMinutes||0)+' minutes'],['Final result',item.finalResult],['Grounded',String(item.groundedDays||0)+' days']];
+    box.innerHTML=`<button type="button" data-jc-back>← Active Job Cards</button><article data-job="${esc(item.id)}"><h2>${esc(item.jobCardNo)} · ${esc(item.title||'Job Card')}</h2><p>${esc(item.processLabel||'Awaiting next action')}</p><dl class="jcm92-facts">${fields.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value||'Not recorded')}</dd></div>`).join('')}</dl><div class="jcm814-row-actions">${up(item.status)==='REPORT_REVIEW'?'<button class="approve" data-review="approve">Approve Maintenance</button><button class="return" data-review="return">Return for Correction</button>':''}${hasFinalReport(item)?'<button data-report>Download Report PDF</button>':''}</div></article>`;
   }
 
   async function rowAction(event){
     const button=event.target.closest('button');if(!button)return;const row=button.closest('[data-job]');const id=row?.dataset.job;if(!id)return;const item=items.find(x=>String(x.id)===String(id));if(!item)return;
     if(button.hasAttribute('data-report')){await downloadReport(item);return}
-    if(button.hasAttribute('data-view')){childWin.alert(`TECHNICIAN REPORT\
-\
-Case: ${item.caseType}\
-\
-Diagnosis / Inspection:\
-${item.diagnosis||'—'}\
-\
-Explanation:\
-${item.explanation||'—'}\
-\
-Findings:\
-${item.findings||'—'}\
-\
-Root Cause:\
-${item.rootCause||'—'}\
-\
-Solution:\
-${item.solution||'—'}\
-\
-Work Done:\
-${item.workDone||'—'}\
-\
-Manager Review:\
-${item.managerReview||'—'}\
-\
-Test: ${item.testDurationMinutes||0} min\
-Final Result: ${item.finalResult||'Pending'}\
-Pending: ${item.pendingReason||'—'}\
-Grounded Days: ${item.groundedDays}`);return}
+    if(button.hasAttribute('data-view')){navigateWorkspace('detail',item.id);return}
     const type=button.dataset.review;if(!type)return;
     const approve=type==='approve';let noteText='';
     if(approve){noteText=childWin.prompt(`Review note for ${item.jobCardNo} (optional):`,'')||'';if(!childWin.confirm(`Approve Technician Report and maintenance${item.requiredSpare?' / required spare':''}?`))return}

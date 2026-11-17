@@ -1636,7 +1636,29 @@ if ($sub === 'dashboard') {
             'createdAt' => (string)$report['created_at'],
         ];
     }
+    // Latest checklist warnings, scoped to the signed-in customer's machines.
+    $reasonStmt = db()->prepare(
+        "SELECT latest.machine_id, ca.label, ca.value
+         FROM (
+           SELECT DISTINCT ON (cr.machine_id) cr.id, cr.machine_id
+           FROM checklist_reports cr
+           JOIN machines m ON m.id = cr.machine_id
+           WHERE m.customer_id = ? AND m.deleted_at IS NULL
+           ORDER BY cr.machine_id, cr.created_at DESC, cr.id DESC
+         ) latest
+         JOIN checklist_answers ca ON ca.report_id = latest.id
+         WHERE ca.safety_level IN ('RED', 'YELLOW')
+         ORDER BY latest.machine_id, CASE ca.safety_level WHEN 'RED' THEN 0 ELSE 1 END, ca.label"
+    );
+    $reasonStmt->execute([$customer['id']]);
+    $reasonsByMachine = [];
+    foreach ($reasonStmt->fetchAll() as $reason) {
+        $reasonsByMachine[(string)$reason['machine_id']][] = trim(
+            (string)$reason['label'] . ((string)$reason['value'] !== '' ? ': ' . (string)$reason['value'] : '')
+        );
+    }
     foreach ($machines as &$machine) {
+        $machine['alertReasons'] = $reasonsByMachine[(string)$machine['id']] ?? [];
         $machine['latestOperatorMessage'] = $operatorByMachine[(string)$machine['id']] ?? null;
     }
     unset($machine);

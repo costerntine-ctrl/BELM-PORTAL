@@ -132,14 +132,13 @@
     return String(report.message || "").trim();
   }
 
-  function shouldShow(machine) {
-    const condition = String(machine.status || "").toUpperCase();
-    const operation = status(machine);
+  function machineIssues(machine) {
+    const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
     const report = machine.latestOperatorMessage || machine.latest_operator_message;
-    const reportStatus = String(report?.status || "").toUpperCase();
-    return ["YELLOW", "RED", "CRITICAL", "ATTENTION"].includes(condition)
-      || !["NORMAL", "", "UNKNOWN"].includes(operation)
-      || (report && !["CLOSED", "RESOLVED", "RECORDED"].includes(reportStatus));
+    const openReport = report && !["CLOSED", "RESOLVED", "RECORDED"].includes(String(report.status || "").toUpperCase());
+    return [...new Set([...reasons, openReport ? operatorText(machine) : "",
+      machine.operationalStatusNote || machine.operational_status_note || ""]
+      .map(value => String(value || "").trim()).filter(Boolean))];
   }
 
   function setDots() {
@@ -171,8 +170,17 @@
     const machine = alerts[index % alerts.length];
     $("machineTitle").textContent = `${machineName(machine)} · Fleet ${fleet(machine)}`;
     $("machineStatus").textContent = `Machine status: ${status(machine)}`;
-    const note = operatorText(machine) || machine.operationalStatusNote || machine.operational_status_note || "Machine requires workshop attention.";
-    $("machineNote").textContent = `— ${note}`;
+    const condition = String(machine.status || "UNKNOWN").toUpperCase();
+    $("machineStatus").textContent = `Machine status: ${status(machine)} · Condition: ${condition}`;
+    const issues = machineIssues(machine);
+    const note = $("machineNote");
+    note.replaceChildren();
+    (issues.length ? issues : ["No active issues reported."]).forEach(issue => {
+      const item = document.createElement("li");
+      item.textContent = issue;
+      note.appendChild(item);
+    });
+    $("alertCount").textContent = `${index + 1} / ${alerts.length} machines`;
     $("prevAlert").disabled = alerts.length < 2;
     $("nextAlert").disabled = alerts.length < 2;
     setDots();
@@ -224,15 +232,20 @@
           if (customerId) machines = extractMachines([await api(`/customers/${encodeURIComponent(customerId)}`)]);
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      $("alertEmpty").textContent = "Could not load machine status. Please refresh to retry.";
+      renderAlert();
+      return;
+    }
 
-    const flagged = machines.filter(shouldShow);
-    alerts.splice(0, alerts.length, ...(flagged.length ? flagged : machines.slice(0, 8)));
-    if (!alerts.length) $("alertEmpty").textContent = "No active machine alerts at the moment.";
+    alerts.splice(0, alerts.length, ...machines);
+    if (!alerts.length) $("alertEmpty").textContent = "No machines available for this account.";
     index = 0;
     renderAlert();
     restartTimer();
   }
+
+  setInterval(loadAlerts, 60000);
 
   window.addEventListener("pageshow", () => {
     const curtain = $("navCurtain");

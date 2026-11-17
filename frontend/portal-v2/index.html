@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" href="/app-icon-192.png">
   <link rel="apple-touch-icon" href="/app-icon-192.png">
   <link rel="manifest" href="/belm-app.webmanifest">
-  <link rel="stylesheet" href="/portal-v2/landing.css?v=730-shared-home">
+  <link rel="stylesheet" href="/portal-v2/landing.css?v=90-machine-status">
 <script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/language-preferences.js?v=54"></script>
 <script defer src="/belm-i18n.js?v=53"></script>
 
@@ -32,12 +32,13 @@
       </div>
 
       <section class="alert-panel" aria-live="polite">
-        <div class="alert-kicker">⚠ MACHINE ALERTS</div>
+        <div class="alert-kicker">MACHINE STATUS</div>
         <button id="prevAlert" class="alert-arrow left" type="button" aria-label="Previous machine alert">‹</button>
         <div id="alertContent" class="alert-content" hidden>
           <h2 id="machineTitle">Machine</h2>
           <p id="machineStatus">Machine status: —</p>
-          <strong id="machineNote">—</strong>
+          <ul id="machineNote" class="machine-issues"></ul>
+          <small id="alertCount"></small>
         </div>
         <div id="alertEmpty" class="alert-empty">Checking machine alerts…</div>
         <button id="nextAlert" class="alert-arrow right" type="button" aria-label="Next machine alert">›</button>
@@ -53,6 +54,6 @@
       <button id="logoutButton" class="logout-link" type="button">Log out / Use another account</button>
     </section>
   </main>
-  <script src="/portal-v2/landing.js?v=730-shared-home"></script>
+  <script src="/portal-v2/landing.js?v=90-machine-status"></script>
 </body>
 </html>

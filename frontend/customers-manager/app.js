@@ -91,11 +91,11 @@
           <button class="icon-close" data-close="reportsDialog" type="button" aria-label="Close">×</button>
         </div>
         <nav class="machine-report-tabs" aria-label="Report type">
-          <button type="button" class="active" data-report-tab="checklist">Checklist Report</button>
-          <button type="button" data-report-tab="jobcard">Job Card Report / Maintenance Report</button>
-          <button type="button" data-report-tab="daily">Daily Report</button>
-          <button type="button" data-report-tab="operator">Operator Reported</button>
-          <button type="button" data-report-tab="analysis">Machine Analysis</button>
+          <a data-report-tab="checklist" target="_blank" rel="noopener">Checklist</a>
+          <a data-report-tab="jobcard" target="_blank" rel="noopener">Job Card / Maintenance</a>
+          <a data-report-tab="daily" target="_blank" rel="noopener">Daily Report</a>
+          <a data-report-tab="operator" target="_blank" rel="noopener">Operator Report</a>
+          <a data-report-tab="analysis" target="_blank" rel="noopener">Machine Analysis</a>
         </nav>
         <div class="machine-report-filter">
           <label>Filter
@@ -217,7 +217,7 @@
 
   loadScript("/delete-confirm.js?v=726-customer-overview-repair", function () {
     loadScript("/edit-confirm.js?v=835-login-detail-edit", function () {
-      loadScript("/customers-manager/manager.js?v=88-fleet-maintenance", function () {
+      loadScript("/customers-manager/manager.js?v=89-report-windows", function () {
         loadScript("/customers-manager/report-result-enhancer.js?v=728-context-results", function () {
           window.__belmCustomerOverviewRuntimeReady = true;
         });

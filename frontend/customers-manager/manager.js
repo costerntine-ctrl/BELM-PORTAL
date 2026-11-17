@@ -390,6 +390,50 @@
 
   const pageParams = new URLSearchParams(location.search);
   const maintenancePage = pageParams.get("view") === "maintenance";
+  const machineReportPage = pageParams.get("view") === "machine-report";
+  const reportTypes = {
+    checklist: "Checklist",
+    jobcard: "Job Card / Maintenance",
+    daily: "Daily Report",
+    operator: "Operator Report",
+    analysis: "Machine Analysis",
+  };
+
+  function machineReportWindowUrl(machineId, type) {
+    const query = new URLSearchParams({ view: "machine-report", machine: machineId, report: type });
+    return `/customers-manager/?${query}`;
+  }
+
+  async function renderMachineReportPage() {
+    const machineId = pageParams.get("machine");
+    const type = pageParams.get("report");
+    const customer = customers.find(entry => (entry.machines || []).some(machine => machine.id === machineId));
+    const machine = customer?.machines.find(entry => entry.id === machineId);
+    const panel = document.getElementById("reportsDialog");
+    if (!machine || !Object.hasOwn(reportTypes, type)) {
+      maintenancePanel.innerHTML = '<p class="empty">This machine report is unavailable for this account.</p><a href="/customers-manager/">← Machines</a>';
+      maintenancePanel.hidden = false;
+      return;
+    }
+    currentReportMachineId = machineId;
+    currentReportMachineName = machineName(machine);
+    currentMachineListCustomerName = customer.name;
+    currentReportTab = type;
+    document.title = `${reportTypes[type]} — ${currentReportMachineName}`;
+    document.getElementById("reportsDialogTitle").textContent = `${customer.name} — ${currentReportMachineName} — ${reportTypes[type]}`;
+    panel.classList.add("machine-report-window");
+    panel.querySelector('[data-close="reportsDialog"]').hidden = true;
+    const back = panel.querySelector("[data-machine-report-back]") || document.createElement("a");
+    back.dataset.machineReportBack = "1";
+    back.className = "ghost";
+    back.textContent = "← Machine Maintenance";
+    back.href = `/customers-manager/?${new URLSearchParams({ view: "maintenance", machine: machineId })}`;
+    panel.querySelector(".dialog-head").appendChild(back);
+    document.querySelector("main.shell").appendChild(panel);
+    panel.setAttribute("open", "");
+    syncMachineReportFilterFields();
+    await renderMachineReportCenter();
+  }
   const maintenanceMachineId = pageParams.get("machine") || "";
   const maintenancePanel = document.getElementById("machineMaintenancePage");
   const fleetGrid = document.getElementById("customerGrid");
@@ -499,6 +543,10 @@
   }
 
   function renderCustomers() {
+    if (machineReportPage) {
+      renderMachineReportPage().catch(error => showAlert(error.message, true));
+      return;
+    }
     if (maintenancePage) {
       renderMaintenancePage();
       return;
@@ -539,7 +587,7 @@
     button.textContent = paused ? "Pause updates" : "Resume updates";
   });
 
-  if (!maintenancePage) {
+  if (!maintenancePage && !machineReportPage) {
     setInterval(() => {
       if (document.hidden || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       for (const panel of fleetGrid.querySelectorAll("[data-fleet-reports]")) {
@@ -793,10 +841,11 @@
       if (!customers.length) await showCustomerDataDiagnostic();
     } catch (error) {
       const message = String(error.message || "Could not load customers.");
+      if (machineReportPage) maintenancePanel.hidden = false;
       const permissionHint = /access|permission|403/i.test(message)
         ? '<br>This login may not have <b>Customers & Machines</b> permission.'
         : '';
-      (maintenancePage ? maintenancePanel : fleetGrid).innerHTML = `<div class="empty"><strong>Could not load machines.</strong><br>${escapeHtml(message)}${permissionHint}<br><button type="button" class="secondary" data-retry-customers>Retry</button></div>`;
+      ((maintenancePage || machineReportPage) ? maintenancePanel : fleetGrid).innerHTML = `<div class="empty"><strong>Could not load machines.</strong><br>${escapeHtml(message)}${permissionHint}<br><button type="button" class="secondary" data-retry-customers>Retry</button></div>`;
       showAlert(message, true);
     }
   }
@@ -1555,7 +1604,7 @@
       checklist: "Checklist Reports",
       jobcard: "Job Card Report / Maintenance Report",
       daily: "Daily Reports",
-      operator: "Operator Reported",
+      operator: "Operator Report",
       analysis: "Machine Analysis",
     };
     periodLabel.textContent = `Showing ${range.label.toLowerCase()} · ${tabLabels[currentReportTab] || "Reports"} · ${currentReportMachineName} only.`;
@@ -1655,21 +1704,22 @@
     }
   }
 
-  async function openMachineReports(machineId, machineName, initialTab = "checklist") {
+  async function openMachineReports(machineId, machineName, initialTab) {
+    if (initialTab && Object.hasOwn(reportTypes, initialTab)) {
+      window.open(machineReportWindowUrl(machineId, initialTab), "_blank", "noopener");
+      return;
+    }
     document.getElementById("machineListDialog").close();
     currentReportMachineId = String(machineId || "");
     currentReportMachineName = machineName || "Machine";
-    currentReportTab = initialTab;
-    cachedMachineReportsKey = "";
-    cachedMachineJobCardsKey = "";
-    cachedMachineOperatorReportsKey = "";
-    document.getElementById("reportsDialogTitle").textContent =
-      `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${currentReportMachineName} Reports`;
-    const mode = document.getElementById("machineReportFilterMode");
-    if (mode) mode.value = "all";
-    syncMachineReportFilterFields();
-    document.getElementById("reportsDialog").showModal();
-    await renderMachineReportCenter();
+    const panel = document.getElementById("reportsDialog");
+    panel.classList.add("machine-report-picker");
+    const owner = customers.find(customer => (customer.machines || []).some(machine => machine.id === currentReportMachineId));
+    document.getElementById("reportsDialogTitle").textContent = `${owner?.name || currentMachineListCustomerName} — ${currentReportMachineName} Reports`;
+    panel.querySelectorAll("[data-report-tab]").forEach(link => {
+      link.href = machineReportWindowUrl(currentReportMachineId, link.dataset.reportTab);
+    });
+    panel.showModal();
   }
 
   function viewJobCardReport(jobCardId) {
@@ -2117,12 +2167,6 @@
     if (dailyButton) viewDailyReport(dailyButton.dataset.viewDailyReport);
   });
 
-  document.querySelectorAll("[data-report-tab]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      currentReportTab = button.dataset.reportTab || "checklist";
-      await renderMachineReportCenter();
-    });
-  });
   document.getElementById("machineReportFilterMode")?.addEventListener("change", syncMachineReportFilterFields);
   document.getElementById("machineReportApplyFilter")?.addEventListener("click", renderMachineReportCenter);
   document.getElementById("machineReportDownloadButton")?.addEventListener("click", downloadMachineReportPeriod);
@@ -2593,11 +2637,11 @@
     section.addEventListener("click", handleMachineAction);
     section.addEventListener("change", saveMachineActivity);
   }
-  if (maintenancePage) {
+  if (maintenancePage || machineReportPage) {
     document.title = "Machine Maintenance — BELM Portal";
     document.querySelectorAll(".shell > .hero, .shell > .metrics, #machineTypeSyncPanel, .customer-toolbar, #customerGrid")
       .forEach(section => { section.hidden = true; });
-    maintenancePanel.hidden = false;
+    maintenancePanel.hidden = !maintenancePage;
   }
 
   // V269 - Machine Type <-> Checklist Template sync check.

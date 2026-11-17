@@ -94,3 +94,62 @@
   .fleet-maintenance-layout { grid-template-columns: minmax(0, 1fr); }
   .fleet-maintenance-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+#reportsDialog .machine-report-tabs {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+#reportsDialog .machine-report-tabs a {
+  display: block;
+  padding: 15px 18px;
+  border: 1px solid var(--line, #65839c);
+  border-radius: 10px;
+  color: inherit;
+  background: var(--paper, transparent);
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+}
+#reportsDialog .machine-report-tabs a:hover,
+#reportsDialog .machine-report-tabs a:focus-visible {
+  border-color: #1684ff;
+  outline: 2px solid #1684ff;
+  outline-offset: 2px;
+}
+#reportsDialog.machine-report-picker .machine-report-filter,
+#reportsDialog.machine-report-picker #machineReportPeriodLabel,
+#reportsDialog.machine-report-picker #reportsList,
+#reportsDialog.machine-report-window .machine-report-tabs {
+  display: none !important;
+}
+#reportsDialog.machine-report-window {
+  display: block;
+  position: static;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  overflow: visible;
+}
+#reportsDialog.machine-report-window .dialog-card {
+  width: 100%;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+#reportsDialog.machine-report-window [data-close="reportsDialog"] {
+  display: none !important;
+}

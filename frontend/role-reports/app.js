@@ -92,7 +92,7 @@
  // All departments read the original records through their existing authorised APIs.
  // No report copy or manual sync job is needed; a saved record is visible on the next load.
  if(!analysisCentre&&['super_admin','customer_admin','workshop_manager','technician'].includes(role)){
-   const technical=groups.find(group=>group.cards.some(card=>['CHECKLIST','MAINTENANCE','JOB CARDS','JOB CARD RECORDS','MACHINES'].includes(card.tag)))||groups[0];
+   const technical=groups.find(group=>/Technician|Technical/.test(group.title))||groups.find(group=>group.cards.some(card=>['CHECKLIST','MAINTENANCE','JOB CARDS','JOB CARD RECORDS','MACHINES'].includes(card.tag)))||groups[0];
    if(technical)technical.cards.push(c('COMPLETED','Completed Maintenance Reports','Completed Job Card and maintenance reports, searchable in pages of 20.','/completed-maintenance-reports/?actor='+(isCustomer?'customer':'admin')));
  }
  const seenReports=new Set();
@@ -111,12 +111,45 @@
    if(header){header.querySelector('strong').textContent='BELM · GENERAL REPORT';header.querySelectorAll('a').forEach(a=>a.remove());const tabs=document.createElement('nav');tabs.className='general-centre-tabs';tabs.setAttribute('aria-label','General Report sections');tabs.innerHTML=['reports','analysis'].map(section=>'<a href="/reports-manager/?module=reports&section='+section+'"'+(section===(analysisCentre?'analysis':'reports')?' aria-current="page"':'')+'>'+ (section==='reports'?'Reports':'Analysis')+'</a>').join('');header.insertBefore(tabs,document.getElementById('refresh'));}
  }
  groups=groups.map(group=>({...group,title:group.title==='Store & Tools Reports'?'Store Reports':group.title==='Bank Control Reports'?'Bank Reports':group.title==='Registration & Sales Reports'?'Registration & Sales Reports':group.title}));
+ // General Report opens a department page rather than expanding every department inline.
+ const categoryParam=new URLSearchParams(location.search).get('category');
+ let departmentPage=false,departmentMenu=false,departmentTitle='';
+ if(administrator&&onGeneral&&!analysisCentre){
+   const catalog=[
+     ['customer','Customer Report',[]],['technician','Technician Report',[]],
+     ['operator','Operator Report',[]],['procurement','Procurement Report',[]],
+     ['store','Store Report',[]],['finance','Finance Report',[]],
+     ['registration','Registration & Sales',[]],['bank','Bank Account Management',[]],
+     ['employee','Employee Records',[]],['saved','Saved Reports',[]]
+   ];
+   const byKey=Object.fromEntries(catalog.map(entry=>[entry[0],entry]));
+   groups.forEach(group=>{
+     const title=group.title.toLowerCase();
+     const key=/technician|technical/.test(title)?'technician':/operator/.test(title)?'operator':/procurement/.test(title)?'procurement':/store/.test(title)?'store':/finance/.test(title)?'finance':/registration/.test(title)?'registration':/bank/.test(title)?'bank':/people|employee/.test(title)?'employee':'customer';
+     byKey[key][2].push(group);
+   });
+   if(isCustomer){
+     byKey.customer[2].unshift(section('Customer Report','Machine records for this company only.',[c('MACHINES','Machine Reports','Checklist, Job Card / Maintenance, Daily Report and Operator Report.','/portal/dashboard?view=machines')]));
+     byKey.operator[2].push(section('Operator Report','Operating records for this company only.',[c('OPERATOR','Operator Reports','Machine observations and daily operating records.','/general-report/report/?type=operator'),c('FUEL','Fuel Report','Fuel usage records.','/general-report/report/?type=fuel')]));
+   }
+   byKey.saved[2]=[section('Saved Reports','Original saved department files.',[])];
+   const categoryHref=key=>'/reports-manager/?module=reports&section=reports&category='+key;
+   if(categoryParam&&byKey[categoryParam]&&byKey[categoryParam][2].length){
+     departmentPage=true;departmentTitle=byKey[categoryParam][1];groups=byKey[categoryParam][2];
+     groups.forEach(group=>group.cards=group.cards.map(card=>{const url=new URL(card.href,location.origin);url.searchParams.set('returnTo',categoryHref(categoryParam));return {...card,href:url.pathname+url.search+url.hash};}));
+     const back=document.createElement('a');back.href='/reports-manager/?module=reports&section=reports';back.className='department-back';back.textContent='← General Report';document.querySelector('header.top').prepend(back);
+   }else{
+     departmentMenu=true;
+     groups=[section('Report Departments','Select a department to open its report page.',catalog.filter(entry=>entry[2].length).map(([key,title,sections])=>({tag:'REPORTS',title,desc:sections.reduce((count,group)=>count+group.cards.length,0)+' report options',href:categoryHref(key)})))];
+     document.getElementById('content').classList.add('department-menu');
+   }
+ }
  const kind=analysisCentre?'Analysis':'Reports';
- document.getElementById('title').textContent=administrator?'General Report — '+kind:'My '+kind;
+ document.getElementById('title').textContent=departmentPage?departmentTitle:administrator?'General Report — '+kind:'My '+kind;
  document.getElementById('scope').textContent=(isCustomer?'CUSTOMER · ':'BELM · ')+(labels[role]||role.replaceAll('_',' '));
  document.getElementById('subtitle').textContent=administrator?(analysisCentre?'Department indicators, comparisons and trends.':'Reports from all departments, read directly from the original saved records.') : analysisCentre?'Summary indicators, comparisons and trends. Open Reports for individual records.':'Individual records and document histories. Open Analysis for indicators and trends.';
  document.getElementById('content').innerHTML=groups.length?groups.map(g=>`<section class="section"><h2>${esc(g.title)}</h2><p>${esc(g.note||'')}</p><div class="grid">${g.cards.map(x=>`<a class="card" href="${esc(x.href)}"><span class="tag">${esc(x.tag)}</span><h3>${esc(x.title)}</h3><p>${esc(x.desc)}</p><strong>Open ${analysisCentre?'analysis':'reports'} →</strong></a>`).join('')}</div></section>`).join(''):`<div class="notice">No ${kind.toLowerCase()} is assigned to this role.</div>`;
- if(!analysisCentre){
+ if(!analysisCentre&&((!departmentPage&&!departmentMenu)||(departmentPage&&categoryParam==='saved'))){
    const section=document.createElement('section');section.className='section';section.innerHTML='<h2>Saved Reports — '+(administrator?'All Roles':'My Role')+'</h2><p>'+(administrator?'Original reports saved by departments appear here automatically.':'Original reports saved by your role appear here automatically.')+' Refresh to load the latest records.</p><div id="savedRoleReports" class="notice" aria-live="polite">Loading saved reports…</div><button id="savedReportsMore" type="button" hidden>Load more</button>';document.getElementById('content').appendChild(section);
    let offset=0;const box=document.getElementById('savedRoleReports'),more=document.getElementById('savedReportsMore');
    async function loadSaved(){more.disabled=true;try{const response=await fetch('/api/saved-reports.php?action=list&limit=100&offset='+offset,{cache:'no-store',headers:{Authorization:'Bearer '+token}});const result=await response.json();if(!response.ok)throw Error(result.error||'Could not load saved reports.');const reports=result.reports||[];if(offset===0)box.textContent='';if(!reports.length&&offset===0)box.textContent='No saved reports yet. Department record reports remain available above.';reports.forEach(report=>{const row=document.createElement('article');row.className='saved-role-report';row.innerHTML='<div><b>'+esc(report.title)+'</b><p>'+esc(report.role)+' · '+esc(report.format)+' · '+esc(report.createdAt)+'</p></div><button type="button">Download '+esc(String(report.format||'').toUpperCase())+'</button>';row.querySelector('button').onclick=async event=>{const button=event.currentTarget;button.disabled=true;try{const response=await fetch('/api/saved-reports.php?action=download&id='+encodeURIComponent(report.id),{headers:{Authorization:'Bearer '+token}});if(!response.ok)throw Error('Report download failed.');const blob=await response.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=String(report.title||'BELM-Report').replace(/[^a-z0-9_-]/gi,'-')+'.'+(report.format==='pdf'?'pdf':'csv');a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){button.textContent=error.message;}finally{button.disabled=false;}};box.appendChild(row);});offset+=reports.length;more.hidden=reports.length<100;}catch(error){if(offset===0)box.textContent=error.message;else more.textContent='Retry loading more';}finally{more.disabled=false;}}

@@ -51,7 +51,7 @@
     }, true);
     window.addEventListener("popstate", () => {
       if (ignoreNextPopstate) { ignoreNextPopstate = false; return; }
-      const openDialog = document.querySelector("dialog[open]");
+      const openDialog = document.querySelector("dialog[open]:not(.machine-report-window)");
       if (openDialog) {
         closingViaBack = true;
         openDialog.close();

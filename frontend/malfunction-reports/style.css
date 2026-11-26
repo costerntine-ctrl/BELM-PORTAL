@@ -43,3 +43,15 @@ table.mf-t{width:100%;border-collapse:collapse;font-size:14px}.mf-t th,.mf-t td{
 @media(max-width:520px){.mf-mcard{grid-template-columns:96px 1fr}.mf-mcard img{width:96px}.mf-top h1{font-size:13px}}
 
 .mf-step textarea{display:block;width:100%;min-height:76px;box-sizing:border-box;font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;resize:vertical;margin-top:6px}
+
+/* Theme fix: the portal's Dark/Light toggle sets data-theme; make every colour follow it so text is never light-on-light or dark-on-dark. */
+:root[data-theme="light"]{--bg:#eef2f7;--card:#fff;--ink:#14202e;--mute:#5b6978;--line:#dbe2ea;--okbg:#dcfce7;--warnbg:#fef3c7;--badbg:#fee2e2}
+:root[data-theme="dark"]{--bg:#0e141b;--card:#18212b;--ink:#e8edf3;--mute:#9aa7b5;--line:#2a3643;--okbg:#10311d;--warnbg:#3a2a0b;--badbg:#3b1414}
+:root[data-theme="dark"] .mf-check li{background:#10311d;color:#bbf7d0}:root[data-theme="dark"] .mf-check li.amber{background:#3a2a0b;color:#fde68a}:root[data-theme="dark"] .mf-after{background:#10311d;color:#bbf7d0;border-color:#166534}
+:root[data-theme="light"] .mf-check li{background:#dcfce7;color:#14532d}:root[data-theme="light"] .mf-check li.amber{background:#fef3c7;color:#78350f}:root[data-theme="light"] .mf-after{background:#dcfce7;color:#14532d;border-color:#86efac}
+:root[data-theme] body,:root[data-theme] .mf-main{background:var(--bg);color:var(--ink)}
+:root[data-theme] .mf-card,:root[data-theme] .mf-step,:root[data-theme] .mf-mcard,:root[data-theme] .mf-info{background:var(--card)!important;color:var(--ink)!important}
+:root[data-theme] .mf-mute{color:var(--mute)!important}
+:root[data-theme] .mf-btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+:root[data-theme="dark"] .mf-pill{color:#fde68a}:root[data-theme="dark"] .mf-pill.ok{color:#86efac}:root[data-theme="dark"] .mf-pill.bad{color:#fca5a5}:root[data-theme="dark"] .mf-pill.info{background:#12294a;color:#93c5fd}
+.mf-main,main{padding-bottom:84px}

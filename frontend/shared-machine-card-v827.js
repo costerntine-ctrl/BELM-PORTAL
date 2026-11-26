@@ -187,6 +187,19 @@
     return match ? { icon: match[1], label: match[2] } : { icon: '⚙️', label: 'Unclassified equipment' };
   }
 
+  if (!window.BelmMachineTypes && !document.querySelector('script[data-belm-type-catalog]')) {
+    const c = document.createElement('script');
+    c.src = '/machine-types/catalog.js?v=1'; c.dataset.belmTypeCatalog = '1';
+    c.onload = () => window.dispatchEvent(new CustomEvent('belm:machine-photo-changed'));
+    document.head.appendChild(c);
+  }
+
+  function machineTypeImage(card) {
+    const name = card.dataset.machineType || card.dataset.belmMachineType ||
+      card.querySelector('[data-machine-type]')?.getAttribute('data-machine-type') || '';
+    return name && window.BelmMachineTypes ? { src: window.BelmMachineTypes.imageFor(name), name } : null;
+  }
+
   function details(card) {
     const generic = [...card.querySelectorAll(':scope>.belm-shared-native-v838>p')].map(text).filter(Boolean).join(' · ');
     return {
@@ -410,10 +423,12 @@
     const visual = summary.querySelector('.belm-shared-visual-v827');
     visual.classList.toggle('has-photo', Boolean(info.photo));
     const visualType = machineVisualType(card, info);
-    const visualKey = `${info.photo}|${info.title}|${visualType.label}`;
+    const typeImg = info.photo ? null : machineTypeImage(card);
+    const visualKey = `${info.photo}|${info.title}|${visualType.label}|${typeImg ? typeImg.src : ''}`;
+    visual.classList.toggle('has-photo', Boolean(info.photo || typeImg));
     if (visual.dataset.visualKey !== visualKey) {
       visual.dataset.visualKey = visualKey;
-      visual.innerHTML = info.photo ? `<img src="${escapeHtml(info.photo)}" alt="${escapeHtml(info.title)} machine photo">` : `<div class="belm-machine-type-placeholder" role="img" aria-label="${escapeHtml(visualType.label)} pictogram"><span aria-hidden="true">${visualType.icon}</span><small>${escapeHtml(visualType.label)}</small><em>No machine photo uploaded</em></div>`;
+      visual.innerHTML = info.photo ? `<img src="${escapeHtml(info.photo)}" alt="${escapeHtml(info.title)} machine photo">` : typeImg ? `<img src="${escapeHtml(typeImg.src)}" alt="${escapeHtml(typeImg.name)}" style="width:100%;height:100%;object-fit:contain">` : `<div class="belm-machine-type-placeholder" role="img" aria-label="${escapeHtml(visualType.label)} pictogram"><span aria-hidden="true">${visualType.icon}</span><small>${escapeHtml(visualType.label)}</small><em>No machine photo uploaded</em></div>`;
     }
     window.BELMMachinePhotos?.mount(card,visual);
     const primaryButton = summary.querySelector('.belm-shared-primary-v827');

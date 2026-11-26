@@ -25,3 +25,6 @@ Limit: legacy Technician pages outside this module (`/tech`, customer technician
 
 ## Phase 57 - menu and dashboard follow the workflow image
 Menu: Dashboard, Machines, Daily Check List Report, Machine Malfunctioning Report, Job Card, Maintenance Report, Alerts (with count). Dashboard: machine cards (Operational / Under Repair / In Maintenance, assigned Technician, Report It, status filter), Technician Summary, Alerts, Workflow. Tested end-to-end against PostgreSQL 16 (assign, report, create Job Card, draft, pending, solved, completed report, archived alerts).
+
+## Phase 58 - core reports and report centre layout
+Core reports now use the workflow names everywhere: Daily Check List Report, Machine Malfunctioning Report, Job Card Reports/Records, Maintenance Report (solved Job Cards). The older technician service-work page is "Maintenance Work Report". General Report: readable header and hero in the light theme, no overlap with the Back button, two-column department list, "1 report / n reports" wording.

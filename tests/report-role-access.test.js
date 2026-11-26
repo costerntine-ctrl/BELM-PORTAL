@@ -22,7 +22,7 @@ assert.match(save, /require_general_report_access\(\$user\);/);
 assert.match(roleReports, /customer_admin:\[section\('Company Operations'.*GENERAL.*General Report/s);
 assert.match(roleReports, /super_admin:\[section\('Management Reports'.*GENERAL.*General Report/s);
 assert.match(roleReports, /workshop_manager:\[section\('Technical Department Reports'.*Workshop Analysis/s);
-for (const report of ['Job Card Records','Machine History','Checklist Report','Diagnosis Report','Operator Report','Fuel Report','Job Card Reports','Maintenance Report']) {
+for (const report of ['Job Card Records','Machine History','Daily Check List Report','Machine Malfunctioning Report','Diagnosis Report','Operator Report','Fuel Report','Job Card Reports','Maintenance Report','Maintenance Work Report']) {
   assert.match(roleReports, new RegExp('workshop_manager:[\\s\\S]*' + report.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `Workshop Manager must have ${report}`);
 }
 const workshopBlock = roleReports.match(/workshop_manager:\[section\([\s\S]*?\n  \]\),\n  technician:/)?.[0] || '';

@@ -26,7 +26,7 @@
 
 <link rel="stylesheet" href="/dashboard-preferences.css?v=54">
 <script defer src="/dashboard-preferences.js?v=54"></script>
-</head>
+<style>#machineTypePreview:not(.hidden){display:flex!important}#machineTypePreview img{width:170px;height:106px;object-fit:contain;border-radius:10px;background:#e8eef5;border:1px solid #9fb7ce}#machineTypePreview span{font-weight:800}</style></head>
   <body>
     <header class="topbar">
       <a class="brand" href="/concept-dashboards/11-workshop-manager/">
@@ -127,6 +127,7 @@
               <option value="">Select machine type…</option>
             </select>
           </label>
+          <div id="machineTypePreview" class="full hidden" style="display:flex;align-items:center;gap:12px"></div>
           <label id="machineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet — add a matching template later so check-ups work)</small>
             <select id="machineTypeOther">
               <option value="">Select machine type…</option>
@@ -271,6 +272,7 @@
 
     <script src="/admin-access.js?v=718-context-back"></script>
     <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
+    <script src="/machine-types/catalog.js?v=1"></script>
     <script src="/customers-manager/app.js?v=89-report-windows"></script>
     <script src="/machine-card-photo-v760.js?v=88-fleet-maintenance"></script>
     <script src="/shared-machine-card-v827.js?v=83-photo-led-card"></script>

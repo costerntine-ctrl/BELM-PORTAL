@@ -471,7 +471,7 @@
         <span class="eyebrow">${escapeHtml(String(machine.fleetNumber || machine.regNumber || machine.serialNumber || "Machine").toUpperCase())}</span>
         <span class="fleet-activity op-${escapeHtml(activity)}">${escapeHtml(activityOptions[activity] || activity)}</span>
       </header>
-      <div class="belm-machine-summary-visual fleet-machine-photo"><span>${escapeHtml(machine.machineType || "Machine")}</span></div>
+      <div class="belm-machine-summary-visual fleet-machine-photo" style="background:#e8eef5 url('${typeof window !== "undefined" && window.BelmMachineTypes ? window.BelmMachineTypes.imageFor(machine.machineType) : ""}') center/contain no-repeat"><span>${escapeHtml(machine.machineType || "Machine")}</span></div>
       <div class="fleet-card-heading">
         <div><h2>${escapeHtml(name)}</h2><p>${escapeHtml(customer.name)} · ${escapeHtml(machine.machineType || "Machine")}</p></div>
       </div>
@@ -958,7 +958,7 @@
   // Template "sync" with the machine (Check Up looks up templates by
   // exact machineType match) - typing something slightly different by
   // hand was the easiest way to accidentally break that match.
-  const BELM_MACHINE_TYPE_CATALOG = [
+  const BELM_MACHINE_TYPE_CATALOG = (window.BelmMachineTypes && window.BelmMachineTypes.list) || [
     "Reach Stacker", "Forklift", "Mobile Crane", "Crawler Crane", "Excavator",
     "Wheel Loader", "Bulldozer", "Motor Grader", "Road Roller", "Dump Truck",
     "Concrete Pump", "Truck", "Generator", "Compressor",
@@ -972,6 +972,7 @@
       const seen = new Set();
       machineTypesCache = templates
         .map((t) => t.machineType)
+        .concat(BELM_MACHINE_TYPE_CATALOG)
         .filter((type) => {
           const key = String(type || "").trim().toLowerCase();
           if (!key || seen.has(key)) return false;
@@ -980,7 +981,7 @@
         })
         .sort((a, b) => a.localeCompare(b));
     } catch (_) {
-      machineTypesCache = [];
+      machineTypesCache = BELM_MACHINE_TYPE_CATALOG.slice().sort((a, b) => a.localeCompare(b));
     }
     return machineTypesCache;
   }
@@ -1024,8 +1025,19 @@
       otherSelect.value = "";
       document.getElementById("machineTypeCustom").value = "";
     }
+    updateMachineTypePreview();
   }
 
+  function updateMachineTypePreview() {
+    const sel = document.getElementById("machineType");
+    const box = document.getElementById("machineTypePreview");
+    if (!box || !window.BelmMachineTypes) return;
+    const v = sel.value;
+    if (!v || v === "__other__") { box.classList.add("hidden"); return; }
+    box.innerHTML = `<img src="${window.BelmMachineTypes.imageFor(v)}" alt="${escapeHtml(v)}"><span>${escapeHtml(v)}</span>`;
+    box.classList.remove("hidden");
+  }
+  document.getElementById("machineType").addEventListener("change", updateMachineTypePreview);
   document.getElementById("machineType").addEventListener("change", (event) => {
     document.getElementById("machineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
     if (event.target.value !== "__other__") {

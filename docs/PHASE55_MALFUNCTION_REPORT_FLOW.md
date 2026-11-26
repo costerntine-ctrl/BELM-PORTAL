@@ -28,3 +28,6 @@ Menu: Dashboard, Machines, Daily Check List Report, Machine Malfunctioning Repor
 
 ## Phase 58 - core reports and report centre layout
 Core reports now use the workflow names everywhere: Daily Check List Report, Machine Malfunctioning Report, Job Card Reports/Records, Maintenance Report (solved Job Cards). The older technician service-work page is "Maintenance Work Report". General Report: readable header and hero in the light theme, no overlap with the Back button, two-column department list, "1 report / n reports" wording.
+
+## Phase 59 - dashboard matches the workflow image
+Banner, BELM Portal / Customer Portal switch with info box, machine cards with photo, Technician Summary, Workflow, Create Job Card panel (works from the dashboard) and Alerts with the "after solved" note. The photo is `frontend/malfunction-reports/machine-default.webp` (default for every machine until per-machine photos exist).

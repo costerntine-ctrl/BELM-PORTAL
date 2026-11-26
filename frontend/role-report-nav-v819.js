@@ -18,7 +18,7 @@
   const role=isCustomer?(s.type==='operator'?'operator':managedTech?'technician':customerAliases[String(s.customerRole||(s.actorType==='owner'?'owner':'')).toLowerCase()]||'unknown'):(Object.entries(staffAliases).find(([name])=>name.toLowerCase()===String(s.roleName||'').trim().toLowerCase())?.[1]||'unknown');
   const isAdmin=role==='super_admin'||role==='customer_admin';
   const path=(location.pathname.replace(/\/+$/,'')||'/');
-  if(path==='/role-reports'||path==='/role-analysis')return;
+  if(path==='/role-reports'||path==='/role-analysis'||role==='system_coordinator'||/^\/(settings-manager|checklist-manager)(?:\/|$)/.test(location.pathname)||location.pathname.startsWith('/coordinator/notifications')||new URLSearchParams(location.search).get('module')==='settings')return;
 
   const icon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
   const reportText=/^(my reports|operator reports|purchase reports|inventory reports|customer reports|reports|role reports)$/i;
@@ -48,14 +48,14 @@
 
   const busyNavs=new WeakSet();
   function normalizeNav(nav){
-    if(!nav||busyNavs.has(nav))return;
+    if(!nav||busyNavs.has(nav)||nav.closest('#belmPersistentNav,.belm-replaced-sidebar'))return;
     busyNavs.add(nav);
     try{
       if(isAdmin){
         const links=Array.from(nav.querySelectorAll('a[href]')).filter(a=>/\/(role-reports|role-analysis|general-report|general-analysis|reports-manager)(?:[/.?]|$)/i.test(a.getAttribute('href')||'')||/^(my (role )?reports?|my analysis|general reports?|general analysis|reports|analysis)$/i.test(String(a.textContent||'').trim()));
         let general=links.shift();links.forEach(a=>a.remove());
         if(!general){general=document.createElement('a');general.className=nav.querySelector('a')?.className||'belm-nav__item';general.innerHTML=icon+'<span>General Report</span>';nav.appendChild(general);}
-        setAttr(general,'href','/reports-manager/?module=reports');labelAnchor(general,'General Report');setData(general,'reportScope','general-admin');
+        setAttr(general,'href',generalReportHref());labelAnchor(general,'General Report');setData(general,'reportScope','general-admin');
         return;
       }
       let my=null;
@@ -167,15 +167,8 @@
   }
 
   function coordinatorCard(){
-    if(role!=='system_coordinator')return;
-    const grid=document.querySelector('.settings-card-grid');
-    if(!grid||grid.querySelector('[data-role-my-reports]'))return;
-    const a=document.createElement('a');
-    a.className='settings-card blue';
-    a.href='/role-reports/';
-    a.dataset.roleMyReports='1';
-    a.innerHTML='<span class="settings-card-icon">▤</span><h2>My Reports</h2><p>System access, user activity, configuration and audit reports for System Coordinator.</p><span class="settings-card-button">Open My Reports</span>';
-    grid.appendChild(a);
+    // System Settings is a configuration module, not a personal reporting workspace.
+    document.querySelectorAll('[data-role-my-reports]').forEach(card=>card.remove());
   }
 
   function scan(){

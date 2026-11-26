@@ -41,3 +41,5 @@ table.mf-t{width:100%;border-collapse:collapse;font-size:14px}.mf-t th,.mf-t td{
 @media(prefers-color-scheme:dark){.mf-check li{background:#10311d;color:#bbf7d0}.mf-check li.amber{background:#3a2a0b;color:#fde68a}.mf-after{background:#10311d;color:#bbf7d0;border-color:#166534}}
 @media(max-width:1000px){.mf-dash,.mf-dash3,.mf-portal{grid-template-columns:1fr}}
 @media(max-width:520px){.mf-mcard{grid-template-columns:96px 1fr}.mf-mcard img{width:96px}.mf-top h1{font-size:13px}}
+
+.mf-step textarea{display:block;width:100%;min-height:76px;box-sizing:border-box;font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;resize:vertical;margin-top:6px}

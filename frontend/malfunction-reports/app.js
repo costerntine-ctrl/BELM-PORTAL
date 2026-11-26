@@ -113,7 +113,7 @@ V.jobs=async()=>{const s=state||'all';title({all:'Job Cards',assigned:'Assigned 
   const d=await api('jobs?state='+encodeURIComponent(s));
   $('view').innerHTML=d.jobs.length?d.jobs.map(j=>'<a class="mf-card" href="'+url('job',{report:j.reportId})+'" style="text-decoration:none;color:inherit"><div class="mf-row"><b>'+esc(j.jobCardNo)+' – '+esc(j.fleetNumber||j.machineLabel)+'</b>'+pill(j.status)+'</div><div>'+esc(j.description)+'</div><div class="mf-mute">'+esc(j.customerName)+' · '+esc(j.technicianName||'')+' · Priority '+esc(j.priority)+' · '+esc(fmt(j.completedAt||j.createdAt))+'</div></a>').join(''):'<p class="mf-mute">No Job Cards here.</p>';};
 
-V.job=async()=>{title('Job Card');const d=await api('job?id='+encodeURIComponent(reportId));const r=d.report,j=d.job,S=d.steps||{};
+V.job=async()=>{title('Job Card');const d=await api('job?id='+encodeURIComponent(reportId));const r=d.report,S=d.steps||{};const j=d.job?{...d.job,job_card_no:d.job.jobCardNo||d.job.job_card_no,technician_name:d.job.technicianName||d.job.technician_name,created_at:d.job.createdAt||d.job.created_at}:null;
   if(!j){$('view').innerHTML='<p class="mf-mute">No Job Card has been created for this report yet.</p>'+(me.manager?'<a class="mf-btn" href="'+url('create',{report:r.id})+'">Create Job Card</a>':'');return}
   title('Job Card – '+j.job_card_no);const closed=r.status==='RESOLVED';
   const done=k=>S[k]&&!S[k].draft&&!(k==='PENDING'&&S[k].cleared);

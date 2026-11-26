@@ -14,11 +14,16 @@
 <script defer src="/belm-i18n.js?v=53"></script>
 
 <link rel="stylesheet" href="/theme-global.css?v=54">
-<script defer src="/theme-manager.js?v=54"></script>
+<script defer src="/theme-manager.js?v=94-home-navigation"></script>
 <link rel="stylesheet" href="/dashboard-preferences.css?v=54">
 <script defer src="/dashboard-preferences.js?v=54"></script>
-</head>
-<body>
+<style>
+/* Welcome Home remains full width even if an older sidebar script is cached. */
+body[data-belm-home="welcome"]{padding-left:0!important;padding-top:0!important}
+body[data-belm-home="welcome"] :is(#belmPersistentNav,#belmPersistentMenu,#belmPersistentScrim){display:none!important}
+body[data-belm-home="welcome"] #belmContextBackV763{left:12px!important}
+</style></head>
+<body data-belm-home="welcome">
   <div id="navCurtain" class="belm-nav-curtain" aria-hidden="true"><span>OPENING <b>YOUR WORKSPACE</b>…</span></div>
   <main class="landing-shell">
     <section class="landing-hero">

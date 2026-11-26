@@ -68,6 +68,6 @@
     host.insertBefore(button,host.firstChild);bind(button);
   }
   function scan(){document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(bind);inject()}
-  async function boot(){if(!hasSession())return;if(!document.querySelector('script[src^="/persistent-role-sidebar.js"]')){const rail=document.createElement('script');rail.src='/persistent-role-sidebar.js?v=86-system-settings-module';document.head.appendChild(rail);}loadReportExport();loadMobileSidebar();loadRoleReportNav();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
+  async function boot(){if(!hasSession())return;if(document.body?.dataset.belmHome!=='welcome'&&!/^\/portal-v2(?:\/index\.html|\/)?$/.test(location.pathname)&&!document.querySelector('script[src^="/persistent-role-sidebar.js"]')){const rail=document.createElement('script');rail.src='/persistent-role-sidebar.js?v=94-home-navigation';document.head.appendChild(rail);}loadReportExport();loadMobileSidebar();loadRoleReportNav();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

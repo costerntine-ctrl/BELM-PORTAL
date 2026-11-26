@@ -15,19 +15,15 @@
 <link rel="stylesheet" href="/dashboard-preferences.css?v=54">
 <script defer src="/dashboard-preferences.js?v=54"></script>
 </head>
-<body data-job-actor="admin">
-  <header class="bar"><a href="/concept-dashboards/11-workshop-manager/">← Workshop Manager</a><b>LIVE JOB CARD / BREAKDOWN QUEUE</b></header>
-  <iframe id="workflowFrame" class="frame" title="BELM Live Job Card / Breakdown Queue"></iframe>
+<body>
 <script>
+/* Job Card now uses the new Job Card & Maintenance Workflow pages (/malfunction-reports/).
+   The old Live Job Card / Breakdown Queue is kept at job-cards-legacy.html (nothing deleted). */
 (function(){
   if(!localStorage.getItem('belm_admin_token')){location.replace(localStorage.getItem('belm_tech_token')?'/technician-job-cards/':'/login');return;}
-  var incoming=new URLSearchParams(location.search),out=new URL('/breakdown-workflow/',location.origin);
-  out.searchParams.set('jobControl','1');out.searchParams.set('actor','admin');out.searchParams.set('embed','1');out.searchParams.set('view','job-cards');out.searchParams.set('module','workshop');
-  incoming.forEach(function(v,k){if(!['actor','source','embed','view','module'].includes(k))out.searchParams.append(k,v)});
-  document.getElementById('workflowFrame').src=out.pathname+out.search;
+  location.replace('/malfunction-reports/?view=jobs&state=all&actor=admin');
 })();
 </script>
-<script src="/job-card-manager-v814.js?v=92-simple-workspace"></script>
-<script src="/job-card-queue-v815.js?v=61-single-job-control"></script>
+<noscript><a href="/malfunction-reports/?view=jobs&state=all&actor=admin">Open Job Card</a></noscript>
 </body>
 </html>

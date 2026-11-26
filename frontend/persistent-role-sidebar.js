@@ -14,14 +14,28 @@
  const staff={'Super Admin':'admin','Workshop Manager':'workshop','Engineer':'workshop','Technician':'technician','Operator':'operator','Machine Operator':'operator','OPERATION':'operator','Procurement':'procurement','Store Keeper':'store','Registration & Sales':'registration','Finance / Accounts':'finance','Bank Controller':'bank','System Coordinator':'system'};
  const customers={owner:'admin',admin:'admin',customer_admin:'admin',workshop_manager:'workshop',technician:'technician',operator:'operator',procurement:'procurement',store_keeper:'store',accounts:'finance',finance:'finance',accountant:'finance'};
  const staffRole=Object.entries(staff).find(([label])=>label.toLowerCase()===String(user.roleName||'').trim().toLowerCase())?.[1];
- const role=customer?(user.type==='operator'?'operator':user.type==='staff'&&staffRole==='technician'?'technician':customers[String(user.customerRole||(user.actorType==='owner'?'owner':'')).toLowerCase()]):staffRole;
- if(!role)return;
+ const accountRole=customer?(user.type==='operator'?'operator':user.type==='staff'&&staffRole==='technician'?'technician':customers[String(user.customerRole||(user.actorType==='owner'?'owner':'')).toLowerCase()]):staffRole;
+ if(!accountRole)return;
+ // Workspace navigation follows the selected role; authentication remains the Admin account.
+ const adminWorkspace=!customer&&accountRole==='admin';
+ const rolePaths=[
+ ['admin','/concept-dashboards/01-admin-home/'],['workshop','/concept-dashboards/11-workshop-manager/'],
+ ['technician','/concept-dashboards/02-technician/'],['operator','/concept-dashboards/07-operator/'],
+ ['procurement','/concept-dashboards/03-procurement/'],['store','/concept-dashboards/06-storekeeper/'],
+ ['registration','/concept-dashboards/04-customer-registration/'],['finance','/concept-dashboards/09-finance-accounts/'],
+ ['bank','/bank-controller/'],['system','/settings-manager/']
+ ];
+ const workspaceParams=new URLSearchParams(location.search);
+ const requestedRole=workspaceParams.get('roleContext');
+ const routeRole=rolePaths.find(([,path])=>location.pathname.startsWith(path))?.[0];
+ const role=adminWorkspace?(routeRole||(rolePaths.some(([key])=>key===requestedRole)?requestedRole:'admin')):accountRole;
+ const rolePreview=adminWorkspace&&role!=='admin';
  const home=customer?{admin:'/customer-admin-dashboard/',workshop:'/customer-workshop-manager/',technician:'/customer-technician-dashboard/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store:'/customer-store-dashboard/',finance:'/customer-finance/'}[role]:{admin:'/concept-dashboards/01-admin-home/',workshop:'/concept-dashboards/11-workshop-manager/',technician:'/concept-dashboards/02-technician/',operator:'/concept-dashboards/07-operator/',procurement:'/concept-dashboards/03-procurement/',store:'/concept-dashboards/06-storekeeper/',registration:'/concept-dashboards/04-customer-registration/',finance:'/concept-dashboards/09-finance-accounts/',bank:'/bank-controller/',system:'/settings-manager/'}[role];
  if(!home)return;
  window.__belmPersistentSidebar=true;
  const menus={
   belm:{
-   admin:[['Workshop Manager','/concept-dashboards/11-workshop-manager/'],['Customers & Machines','/customers-manager/?module=customer-overview'],['Registration & Sales','/concept-dashboards/04-customer-registration/'],['Roles & Users','/roles-manager/'],['Job Cards','/concept-dashboards/11-workshop-manager/job-cards.html'],['Store & Inventory','/concept-dashboards/06-storekeeper/'],['Procurement','/concept-dashboards/03-procurement/'],['Finance','/concept-dashboards/09-finance-accounts/'],['Bank Account Management','/bank-controller/'],['System Settings','/settings-manager/']],
+   admin:[['Technician','/concept-dashboards/02-technician/'],['Machine Operator','/concept-dashboards/07-operator/'],['Workshop Manager','/concept-dashboards/11-workshop-manager/'],['Customers & Machines','/customers-manager/?module=customer-overview'],['Registration & Sales','/concept-dashboards/04-customer-registration/'],['Roles & Users','/roles-manager/'],['Job Cards','/concept-dashboards/11-workshop-manager/job-cards.html'],['Store & Inventory','/concept-dashboards/06-storekeeper/'],['Procurement','/concept-dashboards/03-procurement/'],['Finance','/concept-dashboards/09-finance-accounts/'],['Bank Account Management','/bank-controller/'],['System Settings','/settings-manager/']],
    workshop:[['Job Cards','/concept-dashboards/11-workshop-manager/job-cards.html','service-requests'],['Customers & Machines','/customers-manager/?module=workshop','customers'],['Technicians','/concept-dashboards/11-workshop-manager/technicians.html','roles'],['Workshop Schedule','/concept-dashboards/11-workshop-manager/workshop-schedule.html','service-requests'],['Spare Requests','/workshop-requests/?source=workshop','spare-parts'],['Service & Maintenance','/concept-dashboards/11-workshop-manager/service-maintenance.html','service-requests']],
    technician:[['My Job Cards','/technician-job-cards/'],['Assigned Machines','/concept-dashboards/02-technician/customer-machines.php','customers'],['Testing & Completion','/technician-job-cards/?view=testing']],
    procurement:[['Purchase Requests','/workshop-requests/?source=procurement','service-requests'],['Purchase Records','/belm-procurement/?view=records','suppliers'],['Pending Proforma','/belm-procurement/?view=proforma','suppliers'],['Purchase Orders','/belm-procurement/?view=orders','suppliers'],['Suppliers','/suppliers-manager/','suppliers'],['Delivery Tracking','/belm-procurement/?view=delivery','suppliers']],
@@ -52,11 +66,11 @@
  function rowsForRole(){
   if(settingsModule){
    const entries=[['System Settings','/settings-manager/','settings'],['Users & Roles','/roles-manager/?module=settings','roles'],['Checklist Templates','/checklist-manager/?module=settings','checklist-templates'],['Notification Configuration','/coordinator/notifications/?module=settings','settings'],['Activity Log','/reports-manager/?view=activity&module=settings','activity-log']];
-   return [...entries.filter(([, ,page])=>role==='admin'||!grantedPages||grantedPages.includes(page)).map(([label,href])=>entry(label,href,'System Settings')),entry('Back to Main Menu','/portal-v2/','Navigation')];
+   return [...entries.filter(([, ,page])=>accountRole==='admin'||!grantedPages||grantedPages.includes(page)).map(([label,href])=>entry(label,href,'System Settings')),entry(rolePreview?'← Admin Dashboard':'Back to Main Menu',rolePreview?'/concept-dashboards/01-admin-home/':'/portal-v2/','Navigation')];
   }
-  const rows=[entry('Dashboard',home)];
+  const rows=[...(rolePreview?[entry('← Admin Dashboard','/concept-dashboards/01-admin-home/','Navigation')]:[]),entry('Dashboard',home)];
   for(const [label,href,page,department,modeRole] of menus[customer?'customer':'belm'][role]||[]){
-   if(!customer&&role!=='admin'&&page&&grantedPages&&!grantedPages.includes(page))continue;
+   if(!customer&&accountRole!=='admin'&&page&&grantedPages&&!grantedPages.includes(page))continue;
    if(customer&&departmentStates&&departmentStates[department]==='REMOVED')continue;
    if(customer&&modeState&&modeRole==='settings'&&modeState.customerSettings?.available===false)continue;
    if(customer&&modeState&&modeRole&&modeState.roles?.some(r=>r.key===modeRole&&r.enabled===false))continue;
@@ -82,7 +96,7 @@
  function render(rows){
   const nav=document.querySelector('#belmPersistentNav nav');nav.replaceChildren();const seen=new Set();
   let lastGroup='';
-  rows.forEach(row=>{const u=new URL(row.href,location.origin);u.searchParams.delete('returnTo');const key=u.pathname+u.search+u.hash;if(seen.has(key))return;seen.add(key);if(row.group!==lastGroup){const label=document.createElement('span');label.className='belm-persistent-group';label.textContent=row.group;nav.appendChild(label);lastGroup=row.group;}const a=document.createElement('a');a.href=row.href;a.textContent=row.label;if(selected(row.href))a.setAttribute('aria-current','page');nav.appendChild(a);});
+  rows.forEach(row=>{const u=new URL(row.href,location.origin);u.searchParams.delete('returnTo');const key=u.pathname+u.search+u.hash;if(seen.has(key))return;seen.add(key);if(row.group!==lastGroup){const label=document.createElement('span');label.className='belm-persistent-group';label.textContent=row.group;nav.appendChild(label);lastGroup=row.group;}const a=document.createElement('a');const destination=new URL(row.href,location.origin);if(rolePreview&&!destination.pathname.startsWith('/concept-dashboards/01-admin-home/'))destination.searchParams.set('roleContext',role);a.href=destination.pathname+destination.search+destination.hash;a.textContent=row.label;if(selected(row.href))a.setAttribute('aria-current','page');nav.appendChild(a);});
   // A single best match, so Dashboard does not highlight alongside its sections.
   const matches=[...nav.querySelectorAll('[aria-current]')];if(!matches.length&&/^\/(?:general-report|completed-maintenance-reports|store-audit-report|role-reports)(?:\/|$)/.test(location.pathname)){const reportsLink=[...nav.querySelectorAll('a')].find(a=>a.getAttribute('href')===report);reportsLink?.setAttribute('aria-current','page');}matches.sort((a,b)=>b.href.length-a.href.length).slice(1).forEach(a=>a.removeAttribute('aria-current'));
  }
@@ -104,6 +118,13 @@
   window.addEventListener('hashchange',()=>{nav.querySelectorAll('a').forEach(a=>{if(selected(a.href))a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});});
   document.body.append(toggle,scrim);document.body.classList.add('belm-persistent-ready');
   render(rowsForRole());hideOriginals();
+  if(rolePreview)document.addEventListener('click',event=>{
+   const link=event.target.closest('a[href]');if(!link||link.hasAttribute('download'))return;
+   const url=new URL(link.href,location.origin);
+   if(url.origin!==location.origin||/^\/(?:portal-v2|login|logout)(?:\/|$)/.test(url.pathname)||url.pathname.startsWith('/concept-dashboards/01-admin-home/'))return;
+   if(!url.searchParams.has('roleContext'))url.searchParams.set('roleContext',role);
+   link.href=url.pathname+url.search+url.hash;
+  },true);
   if(customer&&user.type!=='operator'){
     const headers={Authorization:'Bearer '+token};
     const read=async path=>{const response=await fetch(path,{cache:'no-store',headers});if(!response.ok)throw Error('Menu settings unavailable');return response.json();};

@@ -8,7 +8,7 @@
   const activeAccountType=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
   const actorToken={customer:customerToken,tech:techToken,technician:techToken,admin:adminToken};
   let source=['customer','tech','technician','admin'].includes(requestedActor)?(requestedActor==='technician'?'tech':requestedActor):'';
-  if(source && !actorToken[source]){location.replace(source==='admin'?'/login':source==='tech'?'/tech':'/login');return}
+  if(source && !actorToken[source]){const dest=source==='admin'?'/login':source==='tech'?'/tech':'/login';if(embedded){try{window.top.location.replace(dest)}catch(_){window.parent.location.href=dest}}else location.replace(dest);return}
   if(!source && ['customer','technician','admin'].includes(activeAccountType)){source=activeAccountType==='technician'?'tech':activeAccountType}
   if(!source || !actorToken[source]) source=customerToken?'customer':techToken?'tech':'admin';
   const token=actorToken[source]||null;

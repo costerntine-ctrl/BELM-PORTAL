@@ -20,7 +20,7 @@
   <iframe id="workflowFrame" class="frame" title="BELM Live Job Card / Breakdown Queue"></iframe>
 <script>
 (function(){
-  if(!localStorage.getItem('belm_admin_token')){location.replace('/login');return;}
+  if(!localStorage.getItem('belm_admin_token')){location.replace(localStorage.getItem('belm_tech_token')?'/technician-job-cards/':'/login');return;}
   var incoming=new URLSearchParams(location.search),out=new URL('/breakdown-workflow/',location.origin);
   out.searchParams.set('jobControl','1');out.searchParams.set('actor','admin');out.searchParams.set('embed','1');out.searchParams.set('view','job-cards');out.searchParams.set('module','workshop');
   incoming.forEach(function(v,k){if(!['actor','source','embed','view','module'].includes(k))out.searchParams.append(k,v)});

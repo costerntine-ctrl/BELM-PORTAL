@@ -13,3 +13,7 @@ test('machine form shows preview after choosing type',()=>{
   const m=fs.readFileSync(path.join(root,'customers-manager','manager.js'),'utf8');
   assert.match(m,/updateMachineTypePreview/);
 });
+test('technician job cards accept any live technician token',()=>{
+  const j=fs.readFileSync(path.join(root,'technician-job-cards','job-cards.js'),'utf8');
+  assert.match(j,/techLive/);assert.doesNotMatch(j,/roleName\|\|''\)\.toLowerCase\(\)==='technician'\)\?adminToken/);
+});

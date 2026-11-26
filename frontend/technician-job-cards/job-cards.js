@@ -4,7 +4,9 @@
   function payload(t){if(!t)return null;try{const x=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(Array.from(atob(x)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')))}catch{return null}}
   const techPayload=payload(adminToken),customerPayload=payload(customerToken);
   const customerIsTech=String(customerPayload?.roleName||customerPayload?.customerRole||customerPayload?.role||'').toLowerCase()==='technician';
-  const token=(techPayload&&String(techPayload.roleName||'').toLowerCase()==='technician')?adminToken:(customerIsTech?customerToken:null);
+  const techLive=!!techPayload&&!(techPayload.exp&&techPayload.exp*1000<Date.now());
+  /* Any live technician-session token is accepted (role names such as "Senior Technician" no longer bounce to login). */
+  const token=techLive?adminToken:(customerIsTech?customerToken:null);
   if(!token){location.replace('/login');return}
   const technicianName=String((token===adminToken?techPayload?.name:(customerPayload?.actorName||customerPayload?.name))||'Technician').trim()||'Technician';
   const identity=document.getElementById('techIdentity');if(identity)identity.textContent=technicianName;

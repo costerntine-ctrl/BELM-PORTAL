@@ -129,6 +129,40 @@
     .belm-shared-summary-v827 .belm-shared-actions-v827>*{min-width:0;min-height:46px}
     html[data-theme="light"] :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827>.belm-shared-summary-v827{background:#fff!important;color:#14243a!important}
     @media(max-width:420px){.belm-shared-summary-v827 .belm-shared-facts-v827{gap:16px 12px}.belm-shared-summary-v827 .belm-shared-fact-v827>b{font-size:13px}}
+
+    /* Compact portrait cards: shared across existing role-specific views. */
+    :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827{max-width:340px!important;width:100%!important;margin-inline:auto!important;border-radius:16px!important;--card-surface:#111e30;--card-text:#eef4fb;--card-muted:#a9bdd1;--card-line:#34465c;--card-control:#1c3048;--card-accent:#2563a8}
+    html[data-theme="light"] :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827{--card-surface:#fff;--card-text:#17283d;--card-muted:#52667b;--card-line:#d8e1eb;--card-control:#edf3fa;--card-accent:#185a99}
+    :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827::before{border-radius:16px!important;animation:none!important;box-shadow:none!important;opacity:1!important}
+    html[data-theme] :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827>.belm-shared-summary-v827,
+    :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827>.belm-shared-summary-v827{background:var(--card-surface)!important;color:var(--card-text)!important;padding:12px!important;border-radius:16px!important}
+    .belm-shared-summary-v827 .belm-shared-head-v827{position:static;inset:auto;margin-bottom:10px;pointer-events:auto;flex-wrap:wrap}
+    .belm-shared-machine-card-v827 .belm-shared-fleet-v827{background:var(--card-control);color:var(--card-text);border-color:var(--card-line)}
+    .belm-shared-machine-card-v827 .belm-shared-activity-v827{background:var(--card-control);color:var(--card-text);border-color:var(--card-line)}
+    :is(#machineListDialog,body) .belm-shared-machine-card-v827 .belm-shared-visual-v827{aspect-ratio:4/3;min-height:0;max-height:210px;padding:10px;margin:0 0 12px;border-radius:12px!important;background:var(--card-control)!important}
+    .belm-shared-machine-card-v827 .belm-shared-visual-v827 img{max-height:210px}
+    .belm-shared-machine-card-v827 .belm-machine-type-placeholder span,.belm-shared-machine-card-v827 .belm-machine-type-placeholder small,.belm-shared-machine-card-v827 .belm-machine-type-placeholder em{color:var(--card-text)!important}
+    .belm-shared-summary-v827>[data-shared-title],.belm-shared-summary-v827>.belm-shared-meta-v827,.belm-shared-summary-v827>.belm-shared-facts-v827,.belm-shared-summary-v827>.belm-shared-service-v827,.belm-shared-summary-v827>.belm-shared-actions-v827{margin-left:0!important;margin-right:0!important}
+    .belm-shared-machine-card-v827 .belm-shared-summary-v827 h3{color:var(--card-text)!important;font-size:19px!important}
+    .belm-shared-machine-card-v827 .belm-shared-meta-v827,.belm-shared-machine-card-v827 .belm-shared-service-v827,.belm-shared-machine-card-v827 .belm-shared-fact-v827>span{color:var(--card-muted)!important}
+    .belm-shared-machine-card-v827 .belm-shared-fact-v827>b{color:var(--card-text)!important;font-size:13px;line-height:1.35}
+    .belm-shared-summary-v827 .belm-shared-facts-v827{gap:8px 12px;padding:10px 0;margin-top:10px;border-color:var(--card-line)}
+    .belm-shared-summary-v827 .belm-shared-fact-v827{padding:4px 0!important}
+    .belm-shared-summary-v827 .belm-shared-fact-v827>span{margin-bottom:4px}
+    .belm-shared-machine-card-v827 .belm-shared-alert-v827{grid-column:1/-1;background:var(--card-control)!important;margin:0!important;padding:9px!important}
+    .belm-shared-machine-card-v827 .belm-shared-service-v827{border-color:var(--card-line)}
+    .belm-shared-summary-v827 .belm-shared-actions-v827{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .belm-shared-summary-v827 .belm-shared-actions-v827>*{min-height:44px;padding:8px;font-size:12px;border-radius:9px}
+    .belm-shared-summary-v827 .belm-shared-actions-v827>[hidden]{display:none!important}
+    .belm-shared-summary-v827 .belm-shared-view-v827{grid-column:1/-1;background:var(--card-control);border:1px solid var(--card-line);color:var(--card-text)}
+    .belm-shared-summary-v827 .belm-shared-primary-v827,.belm-shared-summary-v827 .belm-shared-checkup-v901{background:var(--card-accent);border:1px solid var(--card-accent);color:#fff}
+    .belm-shared-summary-v827 .belm-shared-primary-v827[data-action-kind="report"]{background:#a52e35;border-color:#a52e35;color:#fff}
+    .belm-shared-machine-card-v827>.belm-shared-drawer-v838{background:var(--card-surface);border-color:var(--card-line);border-radius:0 0 16px 16px!important;padding:12px}
+    .belm-shared-machine-card-v827 .belm-shared-drawer-head-v838 strong,.belm-shared-machine-card-v827 .belm-machine-profile-v841 h4,.belm-shared-machine-card-v827 .belm-machine-history-entry-v842 strong{color:var(--card-text)}
+    .belm-shared-machine-card-v827 .belm-shared-drawer-head-v838 span,.belm-shared-machine-card-v827 .belm-machine-profile-v841 p,.belm-shared-machine-card-v827 .belm-machine-history-entry-v842 small{color:var(--card-muted)}
+    .belm-shared-machine-card-v827 .belm-machine-profile-v841,.belm-shared-machine-card-v827 .belm-shared-status-field-v838{background:var(--card-control);border-color:var(--card-line);color:var(--card-text)}
+    .belm-shared-machine-card-v827 .belm-shared-status-field-v838 select{background:var(--card-surface);color:var(--card-text);border-color:var(--card-line)}
+    .belm-shared-machine-card-v827 :is(button,a,select):focus-visible{outline:3px solid #5298ed;outline-offset:2px}
   `;
   document.head.appendChild(style);
 
@@ -357,7 +391,7 @@
     renderProfileLinks(card, drawer, actions);
     const grid = drawer.querySelector('.belm-shared-action-grid-v838');
     grid.replaceChildren();
-    actions.filter((item) => item !== primary).forEach((item) => {
+    actions.filter((item) => item !== primary && item.kind !== "checkup").forEach((item) => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'belm-shared-action-proxy-v838';
@@ -432,7 +466,13 @@
     }
     window.BELMMachinePhotos?.mount(card,visual);
     const primaryButton = summary.querySelector('.belm-shared-primary-v827');
-    primaryButton.textContent = primary ? (primary.kind === 'report' ? 'Report Issue' : actionLabel(primary.element, primary.kind)) : 'No Direct Action';
+    primaryButton.textContent = primary ? (primary.kind === 'report' ? 'Report It' : primary.kind === 'checkup' ? 'Machine Check-up' : actionLabel(primary.element, primary.kind)) : 'No Direct Action';
+    primaryButton.dataset.actionKind = primary?.kind || '';
+    const checkup = actions.find(item => item.kind === 'checkup' && item !== primary);
+    const checkupButton = summary.querySelector('.belm-shared-checkup-v901');
+    checkupButton.hidden = !checkup;
+    checkupButton.disabled = !checkup;
+    checkupButton.onclick = (event) => { event.preventDefault(); event.stopPropagation(); invoke(checkup); };
     primaryButton.disabled = !primary || Boolean(primary.element.disabled || primary.element.getAttribute('aria-disabled') === 'true');
     primaryButton.onclick = (event) => { event.preventDefault(); event.stopPropagation(); invoke(primary); };
     const machineId=card.dataset.machineId||card.dataset.belmMachineId||'';
@@ -475,7 +515,7 @@
       </div>
       <div class="belm-shared-service-v827" data-shared-service>Service due: not available</div>
       <div class="belm-shared-bar-v827"><i></i></div>
-      <div class="belm-shared-actions-v827"><button type="button" class="belm-shared-primary-v827">Report Issue</button><button type="button" class="belm-shared-view-v827" aria-expanded="false">View Details</button></div>`;
+      <div class="belm-shared-actions-v827"><button type="button" class="belm-shared-primary-v827">Report It</button><button type="button" class="belm-shared-checkup-v901" hidden>Machine Check-up</button><button type="button" class="belm-shared-view-v827" aria-expanded="false">View Details</button></div>`;
     const drawer = document.createElement('section');
     drawer.className = 'belm-shared-drawer-v838';
     drawer.innerHTML = '<div class="belm-shared-drawer-head-v838"><strong>Machine Profile</strong><span>Available for your role</span></div><section class="belm-machine-profile-v841" aria-label="Machine workflow"><h4>Maintenance workflow</h4><p>Open the existing checkup, job card or report for this machine. Unavailable sections need an authorized workflow.</p><div class="belm-machine-profile-links-v841"></div></section><div class="belm-shared-action-grid-v838"></div>';

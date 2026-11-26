@@ -1,6 +1,8 @@
 /* One role-owned navigation rail across dashboards, records and report routes. */
 (function(){
  'use strict';
+ // The welcome screen stays full width; role navigation starts in its dashboard.
+ if(/^\/portal-v2(?:\/index\.html|\/)?$/.test(location.pathname))return;
  if(window.__belmPersistentSidebar||window.top!==window.self||new URLSearchParams(location.search).get('embed')==='1')return;
  if(/^\/(?:login|logout|customer-app|forgot-password|reset-password)(?:[/.]|$)/.test(location.pathname))return;
  const active=localStorage.getItem('belm_active_account_type')||'';

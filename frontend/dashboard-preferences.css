@@ -34,3 +34,13 @@ html[data-theme="light"] .landing-shell h1 { color:#12385e; text-shadow:none; }
 /* One compact display-settings launcher; keep request actions readable on phones. */
 body:has(#belmDashboardPreferences) .belm-global-theme-toggle{display:none!important}
 @media(max-width:700px){.belm-dashboard-preferences{bottom:16px}.belm-dashboard-preferences:not([open]) summary{font-size:0;padding:8px 11px;min-width:44px;min-height:44px;box-sizing:border-box}.belm-dashboard-preferences:not([open]) summary::after{content:'⚙';font-size:20px;line-height:26px}}
+
+/* Shared dashboard palette: neutral surfaces, blue actions; preserve semantic status colors. */
+html[data-theme="light"] { --belm-dashboard-bg:#f4f7fb; --belm-dashboard-surface:#fff; --belm-dashboard-ink:#17283d; --belm-dashboard-muted:#52667b; --belm-dashboard-border:#d8e1eb; }
+html[data-theme="dark"] { --belm-dashboard-bg:#0b1524; --belm-dashboard-surface:#111e30; --belm-dashboard-ink:#eef4fb; --belm-dashboard-muted:#a9bdd1; --belm-dashboard-border:#34465c; }
+html[data-theme] body.belm-admin,html[data-theme] body.belm-persistent-ready { background:var(--belm-dashboard-bg)!important; color:var(--belm-dashboard-ink)!important; }
+html[data-theme] :is(.belm-topbar,.belm-panel,.belm-stat-card,.belm-table-wrap) { background:var(--belm-dashboard-surface)!important; color:var(--belm-dashboard-ink)!important; border-color:var(--belm-dashboard-border)!important; }
+html[data-theme] :is(.belm-panel,.belm-stat-card) :is(h2,h3,h4) { color:var(--belm-dashboard-ink)!important; }
+html[data-theme] :is(.belm-stat-card__label,.belm-panel__subtitle,.belm-topbar__kicker) { color:var(--belm-dashboard-muted)!important; }
+html[data-theme] :is(.belm-panel,.belm-stat-card) { border-radius:14px; }
+html[data-theme] :is(.belm-panel,.belm-stat-card) :is(button,a):focus-visible { outline:3px solid #5298ed;outline-offset:2px; }

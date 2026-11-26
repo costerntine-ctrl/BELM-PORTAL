@@ -111,7 +111,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 <script defer src="/theme-manager.js?v=54"></script>
 <script defer src="/language-preferences.js?v=54"></script>
 <script defer src="/belm-i18n.js?v=53"></script>
-<link rel="stylesheet" href="/dashboard-preferences.css?v=54">
+<link rel="stylesheet" href="/dashboard-preferences.css?v=96-dashboard-colors">
 <script defer src="/dashboard-preferences.js?v=54"></script>
 </head>
 <body class="belm-admin belm-assigned-page" data-assigned-page="machines">

@@ -40,3 +40,9 @@ test('employee operator follows explicit card permissions without invitation rou
 test('unknown or expired accounts never inherit Admin menus',()=>{assert.equal(menu({type:'staff',roleName:'Unknown'}),null);assert.equal(menu({type:'staff',roleName:'Super Admin',exp:1}),null);});
 
 test('System Settings is a module without report, profile or logout destinations',()=>{const rows=menu({type:'staff',roleName:'System Coordinator'}).rows;assert(rows.some(r=>r.label==='System Settings'));assert(rows.every(r=>!['My Reports','General Report','My Profile','My Analysis','Logout'].includes(r.label)));});
+
+test('customer admin uses customer general report and technician has one job card destination',()=>{
+ const customer=menu({type:'customer',customerRole:'owner'});assert.equal(customer.rows.find(r=>r.label==='General Report').href,'/general-report/');
+ const tech=menu({type:'staff',roleName:'Technician'});assert.equal(tech.rows.filter(r=>r.href.startsWith('/technician-job-cards/')).length,1);assert(tech.rows.some(r=>r.label==='Operational Communication'));
+ const store=menu({type:'staff',roleName:'Store Keeper'});assert(store.rows.some(r=>r.label==='Spare Request Notifications'));assert(!store.rows.some(r=>r.label==='Operational Communication'));
+});

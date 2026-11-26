@@ -30,3 +30,10 @@ html[data-theme=light] #belmPersistentNav .belm-persistent-logout{color:#9c253d}
 #belmPersistentNav .belm-persistent-group{display:block;margin:12px 10px 3px;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#a5bfd9;font-weight:700}
 #belmPersistentNav .belm-persistent-menu-note{padding:10px;font-size:12px;line-height:1.5;color:inherit;opacity:.8}
 html[data-theme=light] #belmPersistentNav .belm-persistent-group{color:#4c6581}
+
+/* Consistent workspace rail, independent of department. */
+html[data-theme=light] #belmPersistentNav{background:#fff;color:#17283d;border-color:#d8e1eb}
+html[data-theme=dark] #belmPersistentNav{background:#111e30;color:#eef4fb;border-color:#34465c}
+html[data-theme=dark] #belmPersistentNav .belm-persistent-brand{color:#eef4fb}
+html[data-theme=light] #belmPersistentNav nav a:hover,html[data-theme=light] #belmPersistentNav nav a[aria-current=page]{background:#e6effb;color:#174a80;border-color:#c4d6ec}
+html[data-theme=dark] #belmPersistentNav nav a:hover,html[data-theme=dark] #belmPersistentNav nav a[aria-current=page]{background:#21456b;color:#fff;border-color:#37618b}

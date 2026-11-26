@@ -37,7 +37,7 @@
   belm:{
    admin:[['Technician','/concept-dashboards/02-technician/'],['Machine Operator','/concept-dashboards/07-operator/'],['Workshop Manager','/concept-dashboards/11-workshop-manager/'],['Customers & Machines','/customers-manager/?module=customer-overview'],['Registration & Sales','/concept-dashboards/04-customer-registration/'],['Roles & Users','/roles-manager/'],['Job Cards','/concept-dashboards/11-workshop-manager/job-cards.html'],['Store & Inventory','/concept-dashboards/06-storekeeper/'],['Procurement','/concept-dashboards/03-procurement/'],['Finance','/concept-dashboards/09-finance-accounts/'],['Bank Account Management','/bank-controller/'],['System Settings','/settings-manager/']],
    workshop:[['Job Cards','/concept-dashboards/11-workshop-manager/job-cards.html','service-requests'],['Machine Malfunctioning Report','/malfunction-reports/?actor=admin','service-requests'],['Customers & Machines','/customers-manager/?module=workshop','customers'],['Technicians','/concept-dashboards/11-workshop-manager/technicians.html','roles'],['Workshop Schedule','/concept-dashboards/11-workshop-manager/workshop-schedule.html','service-requests'],['Spare Requests','/workshop-requests/?source=workshop','spare-parts'],['Service & Maintenance','/concept-dashboards/11-workshop-manager/service-maintenance.html','service-requests']],
-   technician:[['My Job Cards','/technician-job-cards/'],['Machine Malfunctioning Report','/malfunction-reports/?actor=technician'],['Assigned Machines','/concept-dashboards/02-technician/customer-machines.php','customers'],['Testing & Completion','/technician-job-cards/?view=testing']],
+   technician:[['My Job Cards','/technician-job-cards/'],['Machine Malfunctioning Report','/malfunction-reports/?actor=technician'],['Assigned Machines','/concept-dashboards/02-technician/customer-machines.php','customers']],
    procurement:[['Purchase Requests','/workshop-requests/?source=procurement','service-requests'],['Purchase Records','/belm-procurement/?view=records','suppliers'],['Pending Proforma','/belm-procurement/?view=proforma','suppliers'],['Purchase Orders','/belm-procurement/?view=orders','suppliers'],['Suppliers','/suppliers-manager/','suppliers'],['Delivery Tracking','/belm-procurement/?view=delivery','suppliers']],
    store:[['Inventory','/spare-parts-manager/','spare-parts'],['Stock In','/spare-parts-manager/?view=stock-in','spare-parts'],['Stock Out & Issues','/spare-parts-manager/?view=stock-out','spare-parts'],['Spare Requests','/spare-parts-manager/?view=requests','spare-parts'],['Low Stock','/spare-parts-manager/?view=low-stock','spare-parts'],['Tools Register','/spare-parts-manager/?view=tools','spare-parts'],['Stock Audit','/store-audit-report/','spare-parts']],
    registration:[['Customers','/customers-manager/?module=registration','customers'],['Pending Applications','/admin-applications/?module=registration','customers'],['Customer Machines','/customers-manager/?view=machines&module=registration','customers'],['Contracts & Service','/contracts-workshops/?module=registration','customers']],
@@ -49,7 +49,7 @@
   customer:{
    admin:[['Company Machines','/portal/dashboard?view=machines',null,'technical'],['Workshop Manager','/customer-workshop-manager/',null,'technical','workshop_manager'],['Roles & Users','/customer-users/',null,'administration'],['Procurement','/customer-procurement-dashboard/',null,'procurement','procurement'],['Store Keeper','/customer-store-dashboard/',null,'store','store_keeper'],['Finance / Accounts','/customer-finance/',null,'finance','accounts'],['System Settings','/customer-settings-center/',null,'administration','settings']],
    workshop:[['Company Machines','/portal/dashboard?view=machines',null,'technical'],['Job Cards','/breakdown-workflow/?actor=customer',null,'technical'],['Machine Malfunctioning Report','/malfunction-reports/?actor=customer',null,'technical'],['Technicians','/customer-workshop-manager/#technicians-on-duty',null,'technical'],['Workshop Schedule','/customer-workshop-manager/#workshop-schedule',null,'technical'],['Workshop Requirements','/customer-procurement-workspace/?view=queue',null,'procurement'],['Service & Maintenance','/customer-inspection-repair/',null,'technical']],
-   technician:[['My Job Cards','/technician-job-cards/',null,'technical'],['Machine Malfunctioning Report','/malfunction-reports/?actor=customer',null,'technical'],['Assigned Machines','/portal/dashboard?view=machines',null,'technical'],['Daily Checklists','/customer-checkup/',null,'technical']],
+   technician:[['My Job Cards','/technician-job-cards/',null,'technical'],['Machine Malfunctioning Report','/malfunction-reports/?actor=customer',null,'technical'],['Assigned Machines','/portal/dashboard?view=machines',null,'technical'],['Machine Check-up','/customer-checkup/',null,'technical']],
    operator:[['Company Machines','/portal/dashboard?view=machines',null,'operator'],['Daily Checklist','/customer-checkup/',null,'operator'],['Fuel Consumption','/customer-fuel-usage/',null,'operator'],['Operator Reports','/general-report/report/?type=operator',null,'operator']],
    procurement:[['Spare Requests','/customer-procurement-home/',null,'procurement'],['Purchase Records','/customer-procurement-workspace/?view=records',null,'procurement'],['Pending Proforma','/customer-procurement-workspace/?view=proforma',null,'procurement'],['Purchase Orders','/customer-procurement-workspace/?view=orders',null,'procurement'],['Suppliers','/customer-procurement-workspace/?view=suppliers',null,'procurement'],['Delivery Tracking','/customer-procurement-workspace/?view=delivery',null,'procurement']],
    store:[['Inventory','/customer-store/',null,'store'],['Stock In','/customer-store/?view=stock-in',null,'store'],['Stock Out & Issues','/customer-store/?view=issues',null,'store'],['Spare Requests','/customer-store/?view=requests',null,'store'],['Tools Register','/customer-tools-register/',null,'store'],['Stock Audit','/customer-store-audit/',null,'store']],
@@ -58,7 +58,7 @@
  };
  const originalSelector='aside.belm-sidebar,aside.sidebar,#belmAdminSidebar,[data-role-sidebar],.cm-side,.csx-sidebar';
  const settingsModule=!customer&&(role==='system'||/^\/(settings-manager|checklist-manager)(?:\/|$)/.test(location.pathname)||location.pathname.startsWith('/coordinator/notifications')||new URLSearchParams(location.search).get('module')==='settings');
- const report=role==='admin'?'/reports-manager/?module=reports':'/role-reports/';
+ const report=role==='admin'?(customer?'/general-report/':'/reports-manager/?module=reports'):'/role-reports/';
  function entry(label,href,group='Workspace'){return {label,href,group};}
  const grantedPages=Array.isArray(user.allowedPages)?user.allowedPages:null;
  let departmentStates=null,modeState=null;
@@ -78,7 +78,7 @@
    rows.push(entry(label,href));
   }
   if(user.type==='operator')return [entry('Dashboard',home),entry('Machine Operations','/operator/')];
-  rows.push(entry(role==='store'?'Spare Request Notifications':'Communication','/role-communications/'));
+  rows.push(entry(role==='store'?'Spare Request Notifications':'Operational Communication','/role-communications/'));
   if(!customer||!departmentStates||departmentStates.generalReport!=='REMOVED'){
    rows.push(entry(role==='admin'?'General Report':'My Reports',report,'Reports'));
    if(!['admin','system','registration'].includes(role))rows.push(entry('My Analysis','/role-analysis/','Reports'));
@@ -101,7 +101,7 @@
   const matches=[...nav.querySelectorAll('[aria-current]')];if(!matches.length&&/^\/(?:general-report|completed-maintenance-reports|store-audit-report|role-reports)(?:\/|$)/.test(location.pathname)){const reportsLink=[...nav.querySelectorAll('a')].find(a=>a.getAttribute('href')===report);reportsLink?.setAttribute('aria-current','page');}matches.sort((a,b)=>b.href.length-a.href.length).slice(1).forEach(a=>a.removeAttribute('aria-current'));
  }
  function boot(){
-  const css=document.createElement('link');css.rel='stylesheet';css.href='/persistent-role-sidebar.css?v=86-system-settings-module';document.head.appendChild(css);
+  const css=document.createElement('link');css.rel='stylesheet';css.href='/persistent-role-sidebar.css?v=96-dashboard-colors';document.head.appendChild(css);
   const aside=document.createElement('aside');aside.id='belmPersistentNav';aside.setAttribute('aria-label','Role menu');
   const brand=document.createElement('strong');brand.className='belm-persistent-brand';brand.textContent=settingsModule?'System Settings':(customer?'Customer':'BELM')+' · '+({admin:'Admin',workshop:'Workshop Manager',technician:'Technician',operator:'Operator',procurement:'Procurement',store:'Store Keeper',finance:'Finance / Accounts',bank:'Bank Controller',registration:'Registration & Sales',system:'System Coordinator'}[role]);
   const nav=document.createElement('nav');nav.setAttribute('aria-label','Main menu');

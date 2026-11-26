@@ -189,8 +189,25 @@ function mf_insert_report(array $a, array $m, string $desc, string $checkup = ''
     return $id;
 }
 
+// Operational (no open Job Card), Under Repair (Job Card assigned, not started),
+// In Maintenance (Technician is working or waiting for parts).
 function mf_machine_status_label(array $row): string {
-    return !empty($row['active_job_no']) ? 'Under Repair' : 'Operational';
+    if (empty($row['active_job_no'])) return 'Operational';
+    return in_array(strtoupper((string)($row['active_job_status'] ?? '')), ['IN_PROGRESS','WAITING_FOR_PARTS','WAITING_PARTS'], true) ? 'In Maintenance' : 'Under Repair';
+}
+
+// Machine rows with status and the Technicians currently assigned. $w comes from mf_machine_where().
+function mf_machine_rows(string $w, array $p, int $limit): array {
+    $s = db()->prepare("SELECT m.id,m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,m.customer_id,c.name AS customer_name,
+            (SELECT j.job_card_no FROM digital_job_cards j WHERE j.machine_id=m.id AND j.status NOT IN ('COMPLETED','CANCELLED') ORDER BY j.created_at DESC LIMIT 1) AS active_job_no,
+            (SELECT j.status FROM digital_job_cards j WHERE j.machine_id=m.id AND j.status NOT IN ('COMPLETED','CANCELLED') ORDER BY j.created_at DESC LIMIT 1) AS active_job_status,
+            (SELECT string_agg(u.name, ', ' ORDER BY u.name) FROM machine_technician_assignments x JOIN users u ON u.id=x.technician_id WHERE x.machine_id=m.id AND x.ended_at IS NULL) AS technicians,
+            (SELECT string_agg(x.technician_id, ',') FROM machine_technician_assignments x WHERE x.machine_id=m.id AND x.ended_at IS NULL) AS technician_ids
+            FROM machines m JOIN customers c ON c.id=m.customer_id WHERE $w ORDER BY c.name, m.fleet_number, m.model LIMIT " . (int)$limit);
+    $s->execute($p);
+    return array_map(fn($r)=>['id'=>$r['id'],'label'=>mf_label($r),'machineType'=>$r['machine_type'],'serialNumber'=>$r['serial_number'] ?? '','fleetNumber'=>$r['fleet_number'] ?? '',
+        'customerId'=>$r['customer_id'],'customerName'=>$r['customer_name'],'status'=>mf_machine_status_label($r),'activeJobNo'=>$r['active_job_no'],
+        'technicians'=>$r['technicians'] ?? '','technicianIds'=>$r['technician_ids'] ? explode(',', $r['technician_ids']) : []], $s->fetchAll());
 }
 
 // ---------------------------------------------------------------- report (Report It)
@@ -255,16 +272,7 @@ if ($method === 'GET' && $action === 'list') {
 if ($method === 'GET' && $action === 'machines') {
     $a = mf_actor($payload);
     $p = []; $w = mf_machine_where($a, $p);
-    $s = db()->prepare("SELECT m.id,m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,m.reg_number,c.name AS customer_name,m.customer_id,
-            (SELECT j.job_card_no FROM digital_job_cards j WHERE j.machine_id=m.id AND j.status NOT IN ('COMPLETED','CANCELLED') ORDER BY j.created_at DESC LIMIT 1) AS active_job_no,
-            (SELECT string_agg(u.name, ', ' ORDER BY u.name) FROM machine_technician_assignments x JOIN users u ON u.id=x.technician_id WHERE x.machine_id=m.id AND x.ended_at IS NULL) AS technicians,
-            (SELECT string_agg(x.technician_id, ',') FROM machine_technician_assignments x WHERE x.machine_id=m.id AND x.ended_at IS NULL) AS technician_ids
-            FROM machines m JOIN customers c ON c.id=m.customer_id WHERE $w ORDER BY c.name, m.fleet_number, m.model LIMIT 300");
-    $s->execute($p);
-    $rows = array_map(fn($r)=>['id'=>$r['id'],'label'=>mf_label($r),'machineType'=>$r['machine_type'],'serialNumber'=>$r['serial_number'] ?? '','fleetNumber'=>$r['fleet_number'] ?? '',
-        'customerId'=>$r['customer_id'],'customerName'=>$r['customer_name'],'status'=>mf_machine_status_label($r),'activeJobNo'=>$r['active_job_no'],
-        'technicians'=>$r['technicians'] ?? '','technicianIds'=>$r['technician_ids'] ? explode(',', $r['technician_ids']) : []], $s->fetchAll());
-    json_out(['machines'=>$rows,'canManage'=>$a['isManager'],'isTechnician'=>$a['isTechnician'],'kind'=>$a['kind']], 200);
+    json_out(['machines'=>mf_machine_rows($w, $p, 300),'canManage'=>$a['isManager'],'isTechnician'=>$a['isTechnician'],'kind'=>$a['kind']], 200);
 }
 
 // ---------------------------------------------------------------- technicians
@@ -409,12 +417,7 @@ if ($method === 'GET' && $action === 'dashboard') {
     $a = mf_actor($payload);
     if ($a['kind'] === 'operator') json_error('Operators use the Operator dashboard.', 403);
     $p = []; $w = mf_machine_where($a, $p);
-    $ms = db()->prepare("SELECT m.id,m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,c.name AS customer_name,
-            (SELECT j.job_card_no FROM digital_job_cards j WHERE j.machine_id=m.id AND j.status NOT IN ('COMPLETED','CANCELLED') ORDER BY j.created_at DESC LIMIT 1) AS active_job_no
-            FROM machines m JOIN customers c ON c.id=m.customer_id WHERE $w ORDER BY m.fleet_number, m.model LIMIT 60");
-    $ms->execute($p);
-    $machines = array_map(fn($r)=>['id'=>$r['id'],'label'=>mf_label($r),'machineType'=>$r['machine_type'],'serialNumber'=>$r['serial_number'] ?? '','fleetNumber'=>$r['fleet_number'] ?? '',
-        'customerName'=>$r['customer_name'],'status'=>mf_machine_status_label($r)], $ms->fetchAll());
+    $machines = mf_machine_rows($w, $p, 60);
     $jp = []; $jw = mf_job_where($a, $jp);
     $from = "FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id
              JOIN machines m ON m.id=j.machine_id JOIN machine_malfunction_reports r ON r.id=bc.source_id";
@@ -426,7 +429,13 @@ if ($method === 'GET' && $action === 'dashboard') {
                          $from WHERE $jw AND UPPER(j.status) NOT IN ('COMPLETED','CANCELLED') ORDER BY j.created_at DESC LIMIT 5");
     $as->execute($jp);
     $active = array_map(fn($r)=>['reportId'=>$r['report_id'],'jobCardNo'=>$r['job_card_no'],'status'=>$r['status'],'technicianName'=>$r['technician_name'],'machineLabel'=>mf_label($r),'fleetNumber'=>$r['fleet_number'] ?? ''], $as->fetchAll());
-    $out = ['machines'=>$machines,'counts'=>['machines'=>count($machines),'active'=>$c['assigned'] + $c['in_progress'],'pending'=>$c['pending'],'completed'=>$c['completed']],'activeJobs'=>$active,'isTechnician'=>$a['isTechnician'],'canManage'=>$a['isManager']];
+    // Alerts: Workshop Manager = reports still waiting for a Job Card; Technician = Job Cards assigned but not started.
+    if ($a['isManager']) {
+        $ap = []; $aw = $a['kind'] === 'customer' ? 'r.customer_id=?' : 'c.is_machinery_admin=0'; if ($a['kind'] === 'customer') $ap[] = $a['customerId'];
+        $aq = db()->prepare("SELECT COUNT(*) FROM machine_malfunction_reports r JOIN customers c ON c.id=r.customer_id WHERE $aw AND r.status='OPEN'"); $aq->execute($ap);
+        $alerts = (int)$aq->fetchColumn();
+    } else $alerts = $c['assigned'];
+    $out = ['machines'=>$machines,'counts'=>['machines'=>count($machines),'active'=>$c['assigned'] + $c['in_progress'],'pending'=>$c['pending'],'completed'=>$c['completed'],'alerts'=>$alerts],'activeJobs'=>$active,'isTechnician'=>$a['isTechnician'],'canManage'=>$a['isManager']];
     if ($a['isManager']) {
         $tp = []; $ts = "SELECT COUNT(*) FROM users u JOIN roles ro ON ro.id=u.role_id WHERE u.is_active=1 AND u.deleted_at IS NULL
                          AND (ro.name='Technician' OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL))";

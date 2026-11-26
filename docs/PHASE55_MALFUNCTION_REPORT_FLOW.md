@@ -22,3 +22,6 @@ Not yet verified against a live PostgreSQL database.
 
 Rules: a Technician sees only machines assigned to him (`machine_technician_assignments`, or an open Job Card for him); the server enforces this. Nothing is deleted: assignments get `ended_at`, a resolved Pending reason gets `resolved_at`, Solved alerts get `role_communications.archived_at`.
 Limit: legacy Technician pages outside this module (`/tech`, customer technician pages) keep their existing machine scope.
+
+## Phase 57 - menu and dashboard follow the workflow image
+Menu: Dashboard, Machines, Daily Check List Report, Machine Malfunctioning Report, Job Card, Maintenance Report, Alerts (with count). Dashboard: machine cards (Operational / Under Repair / In Maintenance, assigned Technician, Report It, status filter), Technician Summary, Alerts, Workflow. Tested end-to-end against PostgreSQL 16 (assign, report, create Job Card, draft, pending, solved, completed report, archived alerts).

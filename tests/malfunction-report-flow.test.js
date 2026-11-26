@@ -53,3 +53,10 @@ test('every view has a Back button and the 5-step flow supports Save Draft', () 
   assert.match(app, /Save Draft/);
   assert.match(read('backend/api/malfunction_reports.php'), /is_draft/);
 });
+
+test('menu follows the workflow image and statuses cover the three machine states', () => {
+  const app = read('frontend/malfunction-reports/app.js');
+  for (const label of ['Daily Check List Report', 'Machine Malfunctioning Report', 'Maintenance Report', "link('Alerts'", 'Technician Summary', 'Report It']) assert.ok(app.includes(label), label);
+  const api = read('backend/api/malfunction_reports.php');
+  for (const s of ['Operational', 'Under Repair', 'In Maintenance']) assert.ok(api.includes(s), s);
+});

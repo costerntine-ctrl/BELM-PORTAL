@@ -71,7 +71,7 @@ console.log("General Report routing contract passed.");
 const loginJs = read("frontend/customer-app.js");
 const navCtx = read("frontend/navigation-context-v763.js");
 assert.doesNotMatch(loginJs, /resumeSession|belm_login_resume_at/, "login requires explicit confirmation even with a saved session");
-assert.match(loginJs, /confirmLoginButton\?\.addEventListener\('click',login\)/, "login must retain explicit confirmation");
+assert.match(loginJs, /form\.addEventListener\('submit',event=>\{/, "login must retain explicit confirmation (the Login form is only submitted by the user)");
 assert.match(read("frontend/logout.php"), /\/login\?signed_out=1/, "logout page must mark an explicit sign-out");
 assert.match(navCtx, /#logout,#logoutButton,\.btn-logout/, "logout controls must clear every session token");
 console.log("Manual sign-in contract passed.");

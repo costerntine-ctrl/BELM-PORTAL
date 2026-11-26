@@ -15,7 +15,7 @@ const note=m=>{$('notice').textContent=m||''};
 const home=isCustomer?(A==='customer'?'/customer-workshop-manager/':'/customer-technician-dashboard/'):(actor==='admin'?'/concept-dashboards/11-workshop-manager/':'/concept-dashboards/02-technician/');
 const STATUS={ASSIGNED:['Assigned','info'],RECEIVED:['Assigned','info'],OPEN:['Assigned','info'],CREATED:['Assigned','info'],IN_PROGRESS:['In Progress','info'],WAITING_FOR_PARTS:['Pending',''],COMPLETED:['Completed','ok'],CANCELLED:['Cancelled','bad']};
 const pill=s=>{const x=STATUS[String(s).toUpperCase()]||[s,''];return '<span class="mf-pill '+x[1]+'">'+esc(x[0])+'</span>'};
-const mpill=s=>'<span class="mf-pill '+(s==='Under Repair'?'bad':'ok')+'">'+esc(s)+'</span>';
+const mpill=s=>'<span class="mf-pill '+(s==='Under Repair'?'bad':s==='In Maintenance'?'info':'ok')+'">'+esc(s)+'</span>';
 const STEPS=[['INITIAL_INSPECTION','1. Initial Inspection'],['FINDINGS_REPORT','2. Findings Report'],['SOLUTION','3. Solution'],['PENDING','4. Pending (if applicable)'],['SOLVED','5. Solved (Job Completion)']];
 let me={manager:false,tech:false},counts={};
 
@@ -36,14 +36,16 @@ function menu(){
       link('Assigned Jobs',url('jobs',{state:'assigned'}),'jobs-assigned',true,counts.assigned),link('In Progress',url('jobs',{state:'in_progress'}),'jobs-in_progress',true,counts.in_progress),
       link('Pending Jobs',url('jobs',{state:'pending'}),'jobs-pending',true,counts.pending),link('Completed Jobs',url('jobs',{state:'completed'}),'jobs-completed',true,counts.completed),link('Job Card History',url('jobs',{state:'history'}),'jobs-history',true));
     if(m)out.push('<hr>',link('Create Job Card',url('create'),'create'));
-  }else if(m){
-    out.push(link('Dashboard',url('dashboard'),'dashboard'),link('Machines',url('machines'),'machines'),link('Technicians',url('technicians'),'technicians'),link('Assignments',url('assignments'),'assignments'),
-      link('Machine Reports',url('machine-reports'),'machine-reports'),link('Job Cards',url('jobs',{state:'all'}),'jobs-all'),link('Create Job Card',url('create'),'create'),
-      ext('Operational Communication',comm),ext('My Report',rep),ext('My Analysis',ana),'<hr>',ext('Settings','/settings-manager/'));
   }else{
-    const checkup=isCustomer?'/customer-checkup/':'/tech?view=machines';
-    out.push(link('Dashboard',url('dashboard'),'dashboard'),link('My Machines',url('machines'),'machines'),ext('Machine Check-up',checkup),link('Job Card',url('jobs',{state:'all'}),'jobs-all'),
-      ext('Operational Communication',comm),ext('My Report',rep),ext('My Analysis',ana),'<hr>',ext('My Profile',prof),ext('Logout','/logout.php'));
+    const daily=isCustomer?'/customer-workshop-checklists/':'/tech-checked-report/',maint='/completed-maintenance-reports/?actor='+A;
+    out.push(link('Dashboard',url('dashboard'),'dashboard'),link(m?'Machines':'My Machines',url('machines'),'machines'),ext('Daily Check List Report',daily),
+      link('Machine Malfunctioning Report',url('machine-reports'),'machine-reports'),link('Job Card',url('jobs',{state:'all'}),'jobs-all'),ext('Maintenance Report',maint),
+      link('Alerts',url('alerts'),'alerts',false,counts.alerts||undefined),'<hr>');
+    if(m)out.push(link('Create Job Card',url('create'),'create'),link('Technicians',url('technicians'),'technicians'),link('Assignments',url('assignments'),'assignments'));
+    else out.push(ext('Machine Check-up',isCustomer?'/customer-checkup/':'/tech?view=machines'));
+    out.push(ext('Operational Communication',comm),ext('My Report',rep),ext('My Analysis',ana),'<hr>');
+    out.push(m?ext('Settings','/settings-manager/'):ext('My Profile',prof));
+    if(!m)out.push(ext('Logout','/logout.php'));
   }
   $('side').innerHTML=out.join('');
 }
@@ -51,24 +53,32 @@ function cur(){return view==='jobs'?'jobs-'+(state||'all'):view==='job'?'jobs-al
 function title(t){$('title').textContent=t;document.title=t+' — BELM'}
 
 const V={};
+const WORKFLOW=[['Machine Check-up','Oil is low – reported by RS 1. After submitting the check-up report, it is saved to the Daily Check List Report.'],['Technician or Machine Operator clicks Report It','Write the machine problem description.'],['Submit','Saved as Machine Malfunctioning Report for that machine.'],['Send Alert','Sent directly to the Workshop Manager as an alert.'],['Create Job Card','The alert asks the Workshop Manager to create a Job Card.']];
+function portalSwitch(){const hasB=!!(g('belm_admin_token')||g('belm_tech_token')),hasC=!!g('belm_customer_token');if(!(hasB&&hasC))return '';
+  const href=(a)=>'/malfunction-reports/?view=dashboard&actor='+a;return '<div class="mf-actions"><a class="mf-btn '+(isCustomer?'ghost':'')+'" href="'+href(me.manager?'admin':'technician')+'">BELM Portal</a><a class="mf-btn '+(isCustomer?'':'ghost')+'" href="'+href('customer')+'">Customer Portal</a></div>'}
+function alertCard(r){return '<div class="mf-card" style="border-color:var(--bad)"><b style="color:var(--bad)">⚠ Alert to Workshop Manager</b><div>Machine: <b>'+esc(r.fleetNumber||r.machineLabel)+'</b> · '+esc(r.machineLabel)+'</div><div>From: '+esc(r.reporterName)+'</div><div>Issue: '+esc(r.description)+'</div><div class="mf-mute">Time: '+esc(fmt(r.createdAt))+'</div>'+(me.manager?'<a class="mf-btn" href="'+url('create',{report:r.id})+'">Action Required: Create a Job Card</a>':'')+'</div>'}
+function workflowCard(){return '<section class="mf-card"><h2>Workflow – Job Card &amp; Maintenance Process</h2><ol class="mf-steps">'+WORKFLOW.map(([a,b],i)=>'<li class="mf-step"><h3>'+(i+1)+'. '+esc(a)+'</h3><div class="mf-mute">'+esc(b)+'</div></li>').join('')+'</ol><div class="mf-mute">After solved: hidden from alerts and saved in Job Card and Maintenance Report.</div></section>'}
+function machineGrid(list){const f=$('flt')?$('flt').value:'';return list.filter(m=>!f||m.status===f).map(machineCard).join('')||'<p class="mf-mute">No machines for this filter.</p>'}
 V.dashboard=async()=>{title(me.manager?'Workshop Manager Dashboard':'Technician Dashboard');const d=await api('dashboard');
   const c=d.counts,st=(l,v)=>'<div class="mf-stat"><span>'+l+'</span><b>'+v+'</b></div>';
-  let h='<div class="mf-stats">'+(me.manager?st('Total Machines',c.machines)+st('Technicians',c.technicians??0):st('My Machines',c.machines))+st('Active Jobs',c.active)+st('Pending',c.pending)+st('Completed',c.completed)+'</div>';
+  let h=portalSwitch()+'<div class="mf-stats">'+(me.manager?st('Total Machines',c.machines)+st('Technicians',c.technicians??0):st('My Machines',c.machines))+st('Active Jobs',c.active)+st('Pending',c.pending)+st('Completed',c.completed)+'</div>';
+  h+='<section class="mf-card"><div class="mf-row"><h2>Machine Cards ('+d.machines.length+' Machines)</h2><select id="flt" aria-label="Status filter" style="width:auto"><option value="">All Status</option><option>Operational</option><option>Under Repair</option><option>In Maintenance</option></select></div><div class="mf-grid" id="mgrid">'+(d.machines.length?machineGrid(d.machines):'<p class="mf-mute">No machine is assigned to you yet. Ask the Workshop Manager.</p>')+'</div></section>';
   if(me.manager){
-    h+='<div class="mf-grid"><section class="mf-card"><div class="mf-row"><h2>Active Job Cards</h2><a href="'+url('jobs',{state:'assigned'})+'">View All</a></div>'+(d.activeJobs.length?d.activeJobs.map(j=>'<a class="mf-row" href="'+url('job',{report:j.reportId})+'"><span><b>'+esc(j.jobCardNo)+'</b> · '+esc(j.machineLabel)+'<div class="mf-mute">'+esc(j.technicianName||'')+'</div></span>'+pill(j.status)+'</a>').join(''):'<p class="mf-mute">No active Job Cards.</p>')+'</section>'+
-    '<section class="mf-card"><div class="mf-row"><h2>Recent Machine Reports</h2><a href="'+url('machine-reports')+'">View All</a></div>'+((d.recentReports||[]).length?d.recentReports.map(r=>'<a class="mf-row" href="'+(r.status==='OPEN'?url('create',{report:r.id}):url('job',{report:r.id}))+'"><span><b>'+esc(r.machineLabel)+'</b> – '+esc(r.description.slice(0,60))+'<div class="mf-mute">From: '+esc(r.reporterName)+' · '+esc(fmt(r.createdAt))+'</div></span>'+(r.status==='OPEN'?'<span class="mf-pill bad">Action Required</span>':'<span class="mf-pill info">Job Card</span>')+'</a>').join(''):'<p class="mf-mute">No active reports.</p>')+'</section></div>';
-    h+='<section class="mf-card"><h2>Machine Status ('+d.machines.length+' Machines)</h2><div class="mf-grid">'+d.machines.map(m=>'<div class="mf-card"><b>'+esc(m.fleetNumber||m.label)+'</b><span class="mf-mute">'+esc(m.label)+'</span>'+mpill(m.status)+'</div>').join('')+'</div></section>';
-  }else{
-    h+='<section class="mf-card"><h2>My Assigned Machine(s)</h2><div class="mf-grid">'+(d.machines.length?d.machines.map(machineCard).join(''):'<p class="mf-mute">No machine is assigned to you yet. Ask the Workshop Manager.</p>')+'</div></section>';
+    h+='<section class="mf-card"><h2>Technician Summary</h2><table class="mf-t"><thead><tr><th>Machine (RS)</th><th>Assigned Technician</th></tr></thead><tbody>'+d.machines.map(m=>'<tr><td><b>'+esc(m.fleetNumber||m.label)+'</b></td><td>= '+esc(m.technicians||'Unassigned')+'</td></tr>').join('')+'</tbody></table></section>';
+    h+='<div class="mf-grid"><section class="mf-card"><div class="mf-row"><h2>Alerts</h2><a href="'+url('alerts')+'">View All</a></div>'+((d.recentReports||[]).filter(r=>r.status==='OPEN').map(alertCard).join('')||'<p class="mf-mute">No active alerts.</p>')+'</section><section class="mf-card"><div class="mf-row"><h2>Active Job Cards</h2><a href="'+url('jobs',{state:'assigned'})+'">View All</a></div>'+(d.activeJobs.length?d.activeJobs.map(j=>'<a class="mf-row" href="'+url('job',{report:j.reportId})+'"><span><b>'+esc(j.jobCardNo)+'</b> · '+esc(j.machineLabel)+'<div class="mf-mute">'+esc(j.technicianName||'')+'</div></span>'+pill(j.status)+'</a>').join(''):'<p class="mf-mute">No active Job Cards.</p>')+'</section></div>';
   }
-  $('view').innerHTML=h;bindMachine();
+  h+=workflowCard();
+  $('view').innerHTML=h;bindMachine();$('flt').onchange=()=>{$('mgrid').innerHTML=machineGrid(d.machines);bindMachine()};
 };
+V.alerts=async()=>{title('Alerts');
+  if(me.manager){const d=await api('list?status=OPEN');$('view').innerHTML=(d.reports.map(alertCard).join('')||'<p class="mf-mute">No active alerts. Solved reports are hidden from alerts and saved in Job Card and Maintenance Report.</p>');return}
+  const d=await api('jobs?state=assigned');$('view').innerHTML=d.jobs.length?d.jobs.map(j=>'<a class="mf-card" href="'+url('job',{report:j.reportId})+'" style="text-decoration:none;color:inherit;border-color:var(--bad)"><b style="color:var(--bad)">New Job Card '+esc(j.jobCardNo)+'</b><div>'+esc(j.machineLabel)+' – '+esc(j.description)+'</div><div class="mf-mute">'+esc(fmt(j.createdAt))+'</div></a>').join(''):'<p class="mf-mute">No new Job Cards waiting for you.</p>';};
 function machineCard(m){const checkup=isCustomer?'/customer-checkup/':'/tech?view=machines';
-  return '<div class="mf-card"><div class="mf-row"><b>'+esc(m.fleetNumber||m.label)+'</b>'+mpill(m.status)+'</div><div>'+esc(m.label)+'</div><div class="mf-mute">Customer: '+esc(m.customerName)+' · Serial: '+esc(m.serialNumber||'—')+'</div><div class="mf-actions"><a class="mf-btn" href="'+checkup+'">Machine Check-up</a><button class="mf-btn warn" data-report="'+esc(m.id)+'" data-label="'+esc(m.label)+'">Report It</button></div></div>'}
+  return '<div class="mf-card"><div class="mf-row"><b>'+esc(m.fleetNumber||m.label)+'</b>'+mpill(m.status)+'</div><div>'+esc(m.label)+'</div><div class="mf-mute">Assigned Technician: <b>'+esc(m.technicians||'—')+'</b></div><div class="mf-mute">Customer: '+esc(m.customerName)+' · Serial: '+esc(m.serialNumber||'—')+'</div><div class="mf-actions"><a class="mf-btn" href="'+checkup+'">Machine Check-up</a><button class="mf-btn warn" data-report="'+esc(m.id)+'" data-label="'+esc(m.label)+'">Report It</button></div></div>'}
 function bindMachine(){document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>window.BelmReportIt&&window.BelmReportIt(b.dataset.report,b.dataset.label))}
 
 V.machines=async()=>{title(me.manager?'Machines':'My Machines');const d=await api('machines');
-  $('view').innerHTML='<div class="mf-grid">'+(d.machines.length?d.machines.map(m=>machineCard(m).replace('</div></div>','</div>'+(me.manager?'<div class="mf-mute">Technician: '+esc(m.technicians||'Unassigned')+'</div>':'')+'</div>')).join(''):'<p class="mf-mute">No machines to show. Technicians see only machines assigned to them.</p>')+'</div>';bindMachine();};
+  $('view').innerHTML='<div class="mf-grid">'+(d.machines.length?d.machines.map(m=>machineCard(m).replace('</div></div>','</div>'+''+'</div>')).join(''):'<p class="mf-mute">No machines to show. Technicians see only machines assigned to them.</p>')+'</div>';bindMachine();};
 
 V.technicians=async()=>{title('Technicians');const d=await api('technicians');
   $('view').innerHTML='<section class="mf-card"><table class="mf-t"><thead><tr><th>Technician</th><th>Machines</th><th>Active jobs</th></tr></thead><tbody>'+(d.technicians.map(t=>'<tr><td>'+esc(t.name)+'</td><td>'+t.machines+'</td><td>'+t.activeJobs+'</td></tr>').join('')||'<tr><td colspan="3" class="mf-mute">No technicians.</td></tr>')+'</tbody></table></section>';};
@@ -115,6 +125,7 @@ async function boot(){
     const jd=await api('dashboard').catch(e=>{throw e});
     me={manager:!!jd.canManage,tech:!!jd.isTechnician};counts={};
     try{const c=await api('jobs?state=all');counts=c.counts||{}}catch(_){}
+    counts.alerts=(jd.counts&&jd.counts.alerts)||0;
     $('who').textContent=me.manager?'Workshop Manager':'Technician';
     menu();
     const fn=V[view]||V.dashboard;

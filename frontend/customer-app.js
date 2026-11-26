@@ -14,10 +14,6 @@
   const button=document.getElementById('loginButton');
   const errorBox=document.getElementById('errorBox');
   const installButton=document.getElementById('installButton');
-  const confirmDialog=document.getElementById('loginConfirmDialog');
-  const confirmAccount=document.getElementById('loginConfirmAccount');
-  const confirmLoginButton=document.getElementById('confirmLoginButton');
-  const cancelLoginButton=document.getElementById('cancelLoginButton');
   let installPrompt=null;
   let loginPending=false;
 
@@ -44,7 +40,7 @@
 
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
-    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='You can edit the email / portal ID and password at any time. Press Continue, then Confirm Login.';return}
+    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='You can edit the email / portal ID and password at any time. Press Login to sign in.';return}
     try{
       const res=await fetchWithTimeout('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'},70000);
       if(!res.ok)throw new Error('Customer app link was not found.');
@@ -57,23 +53,10 @@
   }
   function showError(msg){errorBox.textContent=msg;errorBox.hidden=false}
   function clearError(){errorBox.hidden=true;errorBox.textContent=''}
-  function requestLoginConfirmation(){
-    if(loginPending||!form.reportValidity())return;
-    clearError();
-    confirmAccount.textContent=email.value.trim();
-    if(confirmDialog&&typeof confirmDialog.showModal==='function'){
-      if(!confirmDialog.open)confirmDialog.showModal();
-      setTimeout(()=>confirmLoginButton?.focus(),0);
-      return;
-    }
-    if(window.confirm('Confirm Login? Your saved password will only be submitted after this confirmation.'))login();
-  }
   async function login(){
-    if(loginPending)return;
+    if(loginPending||!form.reportValidity())return;
     loginPending=true;
-    if(confirmDialog?.open)confirmDialog.close();
     clearError(); button.disabled=true; button.textContent='Opening Home Dashboard...';
-    if(confirmLoginButton){confirmLoginButton.disabled=true;confirmLoginButton.textContent='Signing in…';}
     try{
       const payload={email:email.value.trim(),password:password.value};
       if(slug && !isBelm)payload.customerSlug=slug;
@@ -93,9 +76,8 @@
       location.replace('/portal-v2/');
     }catch(err){
       const timedOut=err&&err.name==='AbortError';
-      showError(timedOut?'Server did not respond in time. Tap Continue and confirm again.':(err.message||'Login failed.'));
-      loginPending=false;button.disabled=false;button.textContent='Continue';
-      if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
+      showError(timedOut?'Server did not respond in time. Tap Login to try again.':(err.message||'Login failed.'));
+      loginPending=false;button.disabled=false;button.textContent='Login';
     }
   }
 
@@ -126,11 +108,8 @@
   form.addEventListener('submit',event=>{
     event.preventDefault();
     ensureEditable();
-    requestLoginConfirmation();
+    login();
   });
-  confirmLoginButton?.addEventListener('click',login);
-  cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
-  confirmDialog?.addEventListener('cancel',()=>setTimeout(()=>password.focus(),0));
   passwordToggle?.addEventListener('click',()=>{
     const show=password.type==='password';
     password.type=show?'text':'password';
@@ -152,12 +131,10 @@
     loginPending=false;
     ensureEditable();
     button.disabled=false;
-    button.textContent='Continue';
-    if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
-    if(confirmDialog?.open)confirmDialog.close();
+    button.textContent='Login';
   });
 
-  // Saved credentials may autofill, but only Continue + Confirm Login signs in.
+  // Saved credentials may autofill, but only submitting the Login form signs in.
   ensureEditable();
   loadContext();
 })();

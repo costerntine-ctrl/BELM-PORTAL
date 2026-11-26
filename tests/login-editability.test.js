@@ -20,8 +20,9 @@ assert.doesNotMatch(html, /<script[^>]+password-visibility\.js/, "login must not
 assert.doesNotMatch(js, /cloneNode|replaceWith/, "login runtime must never replace a Chrome Password Manager input target");
 assert.match(js, /'pointerdown','mousedown','touchstart','focus','keydown','beforeinput','animationstart'/, "native inputs must be unlocked for mouse, keyboard and autofill events");
 assert.match(js, /getRegistrations\(\)[\s\S]*unregister\(\)/, "login must retire old service workers after loading the network-only build");
-assert.match(js, /form\.addEventListener\('submit'[\s\S]*requestLoginConfirmation\(\)/, "two-step login confirmation must remain in place");
-assert.match(js, /confirmLoginButton\?\.addEventListener\('click',login\)/, "credentials must only be submitted from Confirm Login");
+assert.match(js, /form\.addEventListener\('submit'[\s\S]*event\.preventDefault\(\);[\s\S]*login\(\)/, "Login submits directly from the form");
+assert.doesNotMatch(js, /requestLoginConfirmation|confirmLoginButton|window\.confirm/, "Login must not require a second confirmation");
+assert.doesNotMatch(html, /loginConfirmDialog|Confirm Login/, "Login confirmation popup must be removed");
 
 assert.match(css, /#loginForm input\{[^}]*pointer-events:auto!important[^}]*user-select:text!important/, "CSS must leave credential inputs as direct edit targets");
 const shell = sw.match(/const SHELL=\[([\s\S]*?)\];/)?.[1] || "";

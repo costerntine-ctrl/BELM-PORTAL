@@ -182,6 +182,7 @@ switch($resource){
     case 'workshop-weekly-status.php': dispatch_root('workshop-weekly-status.php');
     case 'workshop-dashboard-metrics': dispatch('workshop_dashboard_metrics.php');
     case 'belm-workshop-home': dispatch('belm_workshop_home.php');
+    case 'malfunction-reports': dispatch('malfunction_reports.php',['action'=>$segments[1]??'']);
     case 'breakdown-workflow': dispatch('breakdown_workflow.php',['action'=>$segments[1]??'','id'=>$segments[2]??'']);
     case 'belm-procurement': dispatch('belm_procurement.php',['id'=>$segments[1]??'']);
     case 'belm-vat-ledger': dispatch('belm_vat_ledger.php');

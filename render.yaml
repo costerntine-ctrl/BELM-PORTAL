@@ -16,7 +16,7 @@ services:
       - key: PORTAL_URL
         value: https://portal.belmgeneraltech.co.tz
       # Friendly links shared with customers. The main website routes /app/*
-      # to the portal wrapper included in public_website_patch/.
+      # to the portal login (see docker/belm-apache.conf).
       - key: PUBLIC_APP_URL
         value: https://belmgeneraltech.co.tz
       - key: ALLOWED_ORIGINS

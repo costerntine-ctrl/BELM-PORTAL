@@ -1837,3 +1837,81 @@ ALTER TABLE customer_sales_payments ADD COLUMN IF NOT EXISTS request_key VARCHAR
 ALTER TABLE customer_sales_payments ADD COLUMN IF NOT EXISTS request_hash VARCHAR(64) NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_payment_request_key
   ON customer_sales_payments(customer_id, request_key) WHERE request_key IS NOT NULL;
+
+-- Saved role/general reports (backend/api/save-report.php, saved-reports.php).
+-- These endpoints were routed but the table was never created, so every
+-- save/list/download/delete failed with "relation saved_reports does not exist".
+CREATE TABLE IF NOT EXISTS saved_reports (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  customer_id VARCHAR(36) NULL REFERENCES customers(id),
+  report_title VARCHAR(255) NOT NULL,
+  report_type VARCHAR(100) NOT NULL,
+  report_date_from DATE NULL,
+  report_date_to DATE NULL,
+  role_name VARCHAR(100) NOT NULL,
+  file_format VARCHAR(10) NOT NULL CHECK (file_format IN ('pdf','csv')),
+  file_size BIGINT NOT NULL DEFAULT 0,
+  file_data BYTEA NOT NULL,
+  file_hash VARCHAR(64) NULL,
+  metadata JSONB NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_saved_reports_role ON saved_reports(role_name, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_reports_customer ON saved_reports(customer_id, created_at DESC);
+
+-- Phase 55: Machine Malfunctioning Report flow.
+-- "Report It" on a machine card (Technician or Machine Operator) writes one row
+-- here and alerts the responsible Workshop Manager. The manager then creates a
+-- Job Card for a Technician; the Technician works the 5-step progress checklist;
+-- "Solved" closes the Job Card (it then appears in Completed Maintenance
+-- Reports) and the report leaves the alert list.
+CREATE TABLE IF NOT EXISTS machine_malfunction_reports (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  reporter_kind VARCHAR(30) NOT NULL,
+  reporter_id VARCHAR(36) NULL,
+  reporter_name VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  checkup_report_id VARCHAR(36) NULL REFERENCES checklist_reports(id) ON DELETE SET NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','JOB_CARD_CREATED','RESOLVED','CANCELLED')),
+  case_id VARCHAR(36) NULL REFERENCES breakdown_cases(id) ON DELETE SET NULL,
+  job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL,
+  job_card_created_at TIMESTAMPTZ NULL,
+  resolved_at TIMESTAMPTZ NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_malfunction_reports_machine ON machine_malfunction_reports(machine_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_malfunction_reports_customer ON machine_malfunction_reports(customer_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS job_card_progress_steps (
+  job_card_id VARCHAR(36) NOT NULL REFERENCES digital_job_cards(id) ON DELETE CASCADE,
+  step_key VARCHAR(30) NOT NULL CHECK (step_key IN ('INITIAL_INSPECTION','FINDINGS_REPORT','SOLUTION','PENDING','SOLVED')),
+  note TEXT NULL,
+  actor_name VARCHAR(255) NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (job_card_id, step_key)
+);
+-- Save Draft keeps a note without marking the step done; a Pending reason is
+-- kept (never deleted) and marked resolved once later work continues.
+ALTER TABLE job_card_progress_steps ADD COLUMN IF NOT EXISTS is_draft SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE job_card_progress_steps ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ NULL;
+
+-- Which machines a Technician is assigned to. Technicians see only these
+-- machines (plus machines with an open Job Card for them). Assignments are
+-- ended (ended_at), never deleted, so the history stays.
+CREATE TABLE IF NOT EXISTS machine_technician_assignments (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  technician_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  assigned_by_name VARCHAR(255) NULL,
+  assigned_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ended_at TIMESTAMPTZ NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_machine_tech_active ON machine_technician_assignments(machine_id, technician_id) WHERE ended_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_machine_tech_tech ON machine_technician_assignments(technician_id) WHERE ended_at IS NULL;
+
+-- Closed (Solved) malfunction alerts are hidden, not deleted.
+ALTER TABLE role_communications ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ NULL;

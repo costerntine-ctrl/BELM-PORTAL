@@ -149,11 +149,11 @@ if ($method === 'GET') {
     $params=[];
     if ($actor['scope']==='BELM') {
         $roles=array_values(array_unique(array_merge($actor['roleKeys'],['all_belm']))); $marks=implode(',',array_fill(0,count($roles),'?'));
-        $sql="SELECT rc.*,c.name AS customer_name,rr.read_at FROM role_communications rc LEFT JOIN customers c ON c.id=rc.customer_id LEFT JOIN role_communication_reads rr ON rr.communication_id=rc.id AND rr.reader_key=? WHERE ((rc.recipient_scope='BELM' AND rc.recipient_role IN ($marks)) OR rc.sender_actor_key=?) ORDER BY rc.created_at DESC LIMIT 250";
+        $sql="SELECT rc.*,c.name AS customer_name,rr.read_at FROM role_communications rc LEFT JOIN customers c ON c.id=rc.customer_id LEFT JOIN role_communication_reads rr ON rr.communication_id=rc.id AND rr.reader_key=? WHERE rc.archived_at IS NULL AND ((rc.recipient_scope='BELM' AND rc.recipient_role IN ($marks)) OR rc.sender_actor_key=?) ORDER BY rc.created_at DESC LIMIT 250";
         $params=array_merge([$actor['actorKey']],$roles,[$actor['actorKey']]);
     } else {
         $roles=array_values(array_unique(array_merge($actor['roleKeys'],['customer_all']))); $marks=implode(',',array_fill(0,count($roles),'?'));
-        $sql="SELECT rc.*,c.name AS customer_name,rr.read_at FROM role_communications rc LEFT JOIN customers c ON c.id=rc.customer_id LEFT JOIN role_communication_reads rr ON rr.communication_id=rc.id AND rr.reader_key=? WHERE rc.customer_id=? AND ((rc.recipient_scope='CUSTOMER' AND rc.recipient_role IN ($marks)) OR rc.sender_actor_key=?) ORDER BY rc.created_at DESC LIMIT 250";
+        $sql="SELECT rc.*,c.name AS customer_name,rr.read_at FROM role_communications rc LEFT JOIN customers c ON c.id=rc.customer_id LEFT JOIN role_communication_reads rr ON rr.communication_id=rc.id AND rr.reader_key=? WHERE rc.archived_at IS NULL AND rc.customer_id=? AND ((rc.recipient_scope='CUSTOMER' AND rc.recipient_role IN ($marks)) OR rc.sender_actor_key=?) ORDER BY rc.created_at DESC LIMIT 250";
         $params=array_merge([$actor['actorKey'],$actor['customerId']],$roles,[$actor['actorKey']]);
     }
     $stmt=db()->prepare($sql);$stmt->execute($params);$rows=array_values(array_filter($stmt->fetchAll(), fn($row)=>rc_store_notice_allowed($actor,$row)));

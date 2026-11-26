@@ -60,7 +60,7 @@ $protectedTables = [
     'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests', 'customer_suppliers', 'customer_department_settings', 'customer_sales_documents', 'customer_sales_payments', 'customer_finance_expenses',
     'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
     'customer_communications', 'role_communications', 'role_communication_reads', 'notification_logs', 'system_settings', 'machine_service_owner_notifications',
-    'customer_tool_issues', 'belm_workshop_tool_issues', 'delivery_notes', 'delivery_note_items', 'tasks', 'activity_logs', 'trash_entries',
+    'machine_malfunction_reports', 'job_card_progress_steps', 'machine_technician_assignments', 'saved_reports', 'customer_tool_issues', 'belm_workshop_tool_issues', 'delivery_notes', 'delivery_note_items', 'tasks', 'activity_logs', 'trash_entries',
 ];
 
 try {

@@ -20,19 +20,17 @@ function saved_report_scope_sql(array $user, string $roleKey, bool $canGeneral, 
         if ($isCustomer) { $params[] = $user['id']; return 'customer_id = ?'; }
         return '1 = 1';
     }
+    // Only reached when the caller cannot read General Report rows, so general
+    // rows are never in scope here. No boolean is bound: PDO sends PHP false as
+    // '' which PostgreSQL rejects for a boolean ("? = TRUE" caused HTTP 500 for
+    // every non-admin role).
     $clauses = [];
     if ($isCustomer) {
         $clauses[] = 'customer_id = ?';
         $params[] = $user['id'];
-        // Customer owner/admin can see customer-role and general reports.
-        $clauses[] = "(role_name = ? OR (LOWER(role_name) IN ('general','general_report','general report') AND ? = TRUE))";
-        $params[] = $roleKey;
-        $params[] = $canGeneral;
-    } else {
-        $clauses[] = '(role_name = ? OR (LOWER(role_name) IN (\'general\',\'general_report\',\'general report\') AND ? = TRUE))';
-        $params[] = $roleKey;
-        $params[] = $canGeneral;
     }
+    $clauses[] = 'role_name = ?';
+    $params[] = $roleKey;
     return implode(' AND ', $clauses);
 }
 

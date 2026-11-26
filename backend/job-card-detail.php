@@ -45,13 +45,13 @@ function jc_detail_load(string $id, string $jobCardNo): array {
     $sql = "SELECT j.*,
                    bc.current_stage,bc.current_department,bc.status AS case_status,bc.blocker_reason,
                    bc.source_type,bc.source_id,bc.opened_at AS case_opened_at,
-                   c.name AS customer_name,c.address AS customer_address,
+                   c.name AS customer_name,c.address AS customer_address,c.is_machinery_admin,
                    m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,m.reg_number
             FROM digital_job_cards j
             JOIN breakdown_cases bc ON bc.id=j.case_id
             JOIN customers c ON c.id=j.customer_id
             JOIN machines m ON m.id=j.machine_id
-            WHERE ";
+            WHERE c.deleted_at IS NULL AND m.deleted_at IS NULL AND ";
     if ($id !== '') {
         $stmt = db()->prepare($sql . 'j.id=? LIMIT 1');
         $stmt->execute([$id]);
@@ -72,8 +72,18 @@ function jc_detail_access(array $ctx, array $job): void {
         }
         return;
     }
-    if (!empty($ctx['isTechnician']) && (string)$job['technician_id'] !== (string)$ctx['actorId']) {
-        json_error('This Job Card is not assigned to this Technician.', 403);
+    if (!empty($ctx['isTechnician'])) {
+        if ((string)$job['technician_id'] !== (string)$ctx['actorId']) {
+            json_error('This Job Card is not assigned to this Technician.', 403);
+        }
+        return;
+    }
+    // Same boundary as job_card_workflow_v814.php and job-process-auto.php: BELM
+    // staff only see Job Cards of customers BELM maintains, or official support
+    // requests, never a customer's own internal maintenance team.
+    $officialSupport = strtoupper((string)($job['source_type'] ?? '')) === 'SERVICE_REQUEST';
+    if (!empty($job['is_machinery_admin']) && !$officialSupport) {
+        json_error('This customer is using its own maintenance team.', 403);
     }
 }
 

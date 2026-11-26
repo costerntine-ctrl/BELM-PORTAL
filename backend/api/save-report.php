@@ -17,12 +17,12 @@ if (!$data) {
     json_error('Invalid JSON payload', 400);
 }
 
-$title = trim($data['title'] ?? '');
-$type = trim($data['type'] ?? '');
-$format = trim($data['format'] ?? '');
-$dateFrom = trim($data['dateFrom'] ?? '');
-$dateTo = trim($data['dateTo'] ?? '');
-$fileData = $data['fileData'] ?? '';
+$title = trim((string)($data['title'] ?? ''));
+$type = trim((string)($data['type'] ?? ''));
+$format = strtolower(trim((string)($data['format'] ?? '')));
+$dateFrom = trim((string)($data['dateFrom'] ?? ''));
+$dateTo = trim((string)($data['dateTo'] ?? ''));
+$fileData = is_string($data['fileData'] ?? null) ? $data['fileData'] : '';
 $roleName = trim((string)($data['roleName'] ?? ''));
 $effectiveRole = belm_report_role_key($user);
 $submittedRole = strtolower(trim($roleName));
@@ -55,7 +55,7 @@ if (!$title) {
 if (!$type) {
     json_error('Report type is required', 422);
 }
-if (!in_array($format, ['pdf', 'csv'])) {
+if (!in_array($format, ['pdf', 'csv'], true)) {
     json_error('Invalid file format. Must be pdf or csv.', 422);
 }
 if (!$fileData) {
@@ -82,19 +82,17 @@ if ($fileSize > 50 * 1024 * 1024) { // 50MB limit
 // Validate date range
 $dateFromVal = null;
 $dateToVal = null;
-if (!empty($dateFrom)) {
-    $dateFromVal = date_parse_from_format('Y-m-d', $dateFrom);
-    if (!$dateFromVal || $dateFromVal['error_count'] > 0) {
-        json_error('Invalid dateFrom format. Use YYYY-MM-DD.', 422);
-    }
-    $dateFromVal = $dateFrom;
+foreach (['dateFrom' => $dateFrom, 'dateTo' => $dateTo] as $label => $value) {
+    if ($value === '') continue;
+    $parsed = DateTime::createFromFormat('!Y-m-d', $value);
+    $errors = DateTime::getLastErrors();
+    $clean = $parsed instanceof DateTime && $parsed->format('Y-m-d') === $value
+        && (!$errors || ($errors['warning_count'] === 0 && $errors['error_count'] === 0));
+    if (!$clean) json_error('Invalid ' . $label . ' format. Use a real date as YYYY-MM-DD.', 422);
+    if ($label === 'dateFrom') $dateFromVal = $value; else $dateToVal = $value;
 }
-if (!empty($dateTo)) {
-    $dateToVal = date_parse_from_format('Y-m-d', $dateTo);
-    if (!$dateToVal || $dateToVal['error_count'] > 0) {
-        json_error('Invalid dateTo format. Use YYYY-MM-DD.', 422);
-    }
-    $dateToVal = $dateTo;
+if ($dateFromVal !== null && $dateToVal !== null && $dateFromVal > $dateToVal) {
+    json_error('dateFrom cannot be after dateTo.', 422);
 }
 
 // Get database connection

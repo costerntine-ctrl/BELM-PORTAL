@@ -838,6 +838,26 @@
           }, 0);
         }
       }
+      // Direct Machine Check-up (Checklist): ?machine=<id>&action=checkup opens that
+      // machine's checklist at once, with no extra login or customer picking.
+      const requestedMachineId = String(deepLinkParams.get("machine") || "").trim();
+      if (requestedMachineId && requestedAction === "checkup" && !deepLinkHandled) {
+        for (const customer of customers) {
+          const machine = (customer.machines || []).find((m) => String(m.id) === requestedMachineId);
+          if (!machine) continue;
+          deepLinkHandled = true;
+          const name = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType || "Machine";
+          window.setTimeout(() => {
+            openMachineCheckup(machine.id, machine.machineType || "", name);
+            try {
+              const cleanUrl = new URL(window.location.href);
+              cleanUrl.searchParams.delete("action");
+              window.history.replaceState(window.history.state, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+            } catch (_) {}
+          }, 0);
+          break;
+        }
+      }
       if (!customers.length) await showCustomerDataDiagnostic();
     } catch (error) {
       const message = String(error.message || "Could not load customers.");

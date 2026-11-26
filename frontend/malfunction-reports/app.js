@@ -42,7 +42,7 @@ function menu(){
       link('Machine Malfunctioning Report',url('machine-reports'),'machine-reports'),link('Job Card',url('jobs',{state:'all'}),'jobs-all'),ext('Maintenance Report',maint),
       link('Alerts',url('alerts'),'alerts',false,counts.alerts||undefined),'<hr>');
     if(m)out.push(link('Create Job Card',url('create'),'create'),link('Technicians',url('technicians'),'technicians'),link('Assignments',url('assignments'),'assignments'));
-    else out.push(ext('Machine Check-up (Checklist)',isCustomer?'/customer-checkup/':'/tech?view=machines'));
+    else out.push(ext('Machine Check-up (Checklist)',isCustomer?'/customer-checkup/':'/malfunction-reports/?view=machines&actor='+A));
     out.push(ext('Operational Communication',comm),ext('My Report',rep),ext('My Analysis',ana),'<hr>');
     out.push(m?ext('Settings','/settings-manager/'):ext('My Profile',prof));
     if(!m)out.push(ext('Logout','/logout.php'));
@@ -81,7 +81,7 @@ function alertsTech(d){return '<section class="mf-card"><div class="mf-ph mf-row
 V.alerts=async()=>{title('Alerts');
   if(me.manager){const d=await api('list?status=OPEN');$('view').innerHTML=(d.reports.map(alertCard).join('')||'<p class="mf-mute">No active alerts. Solved reports are hidden from alerts and saved in Job Card and Maintenance Report.</p>');return}
   const d=await api('jobs?state=assigned');$('view').innerHTML=d.jobs.length?d.jobs.map(j=>'<a class="mf-card" href="'+url('job',{report:j.reportId})+'" style="text-decoration:none;color:inherit;border-color:var(--bad)"><b style="color:var(--bad)">New Job Card '+esc(j.jobCardNo)+'</b><div>'+esc(j.machineLabel)+' – '+esc(j.description)+'</div><div class="mf-mute">'+esc(fmt(j.createdAt))+'</div></a>').join(''):'<p class="mf-mute">No new Job Cards waiting for you.</p>';};
-function machineCard(m){const checkup=(isCustomer?'/customer-checkup/?machine=':'/tech?view=machines&machine=')+encodeURIComponent(m.id);
+function machineCard(m){const checkup=isCustomer?'/customer-checkup/?machine='+encodeURIComponent(m.id):'/customers-manager/?action=checkup&machine='+encodeURIComponent(m.id);
   return '<div class="mf-mcard"><img src="'+(window.BelmMachineTypes?BelmMachineTypes.imageFor(m.machineType):'/malfunction-reports/machine-default.webp')+'" alt="'+esc(m.label)+'" loading="lazy" width="120" height="110"><div class="mf-mbody"><div class="mf-row"><b>'+esc(m.fleetNumber||m.label)+'</b>'+mpill(m.status)+'</div><div>'+esc(m.label)+'</div><div class="mf-mute">Assigned Technician: <b>'+esc(m.technicians||'—')+'</b></div><div class="mf-mute">Customer: '+esc(m.customerName)+' · Serial: '+esc(m.serialNumber||'—')+'</div><button class="mf-btn blue" data-report="'+esc(m.id)+'" data-label="'+esc(m.label)+'">Report It</button><a class="mf-btn ghost" href="'+checkup+'">Machine Check-up (Checklist)</a></div></div>'}
 function bindMachine(){document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>window.BelmReportIt&&window.BelmReportIt(b.dataset.report,b.dataset.label))}
 
